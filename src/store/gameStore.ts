@@ -3,119 +3,86 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-// Проверяем что мы в браузере
-const isBrowser = typeof window !== 'undefined';
-
-// Базовые типы
-interface Character {
-  evolutionStage: number;
-  name: string;
-  emoji: string;
-  abilities: string[];
-}
-
 interface GameState {
+  /* core gameplay flags */
   isPlaying: boolean;
   isGameOver: boolean;
+  paused: boolean;
+
+  /* stats */
   score: number;
-  highScore: number;
-  rektTokens: number;
+  coins: number;
+  rektTokens: number; // backward-compat for old components
   lives: number;
+  highScore: number;
   level: number;
-  character: Character;
-  
-  // Actions
+
+  /* character physics */
+  characterPosition: [number, number, number];
+
+  /* actions */
   startGame: () => void;
-  restartGame: () => void;
-  gameOver: () => void;
+  togglePause: () => void;
   addScore: (points: number) => void;
+  addCoins: (amount: number) => void;
+  /* legacy alias */
   addTokens: (amount: number) => void;
   loseLife: () => void;
+  setCharacterPosition: (pos: [number, number, number]) => void;
 }
-
-// Начальное состояние
-const initialState = {
-  isPlaying: false,
-  isGameOver: false,
-  score: 0,
-  highScore: isBrowser ? parseInt(localStorage.getItem('rektfrog-highscore') || '0') : 0,
-  rektTokens: isBrowser ? parseInt(localStorage.getItem('rektfrog-tokens') || '0') : 0,
-  lives: 5,
-  level: 1,
-  character: {
-    evolutionStage: 1,
-    name: 'REKT Frog',
-    emoji: '🐸',
-    abilities: ['Jump', 'Survive']
-  }
-};
 
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-      ...initialState,
+      /* initial state */
+      isPlaying: false,
+      isGameOver: false,
+      paused: false,
+      score: 0,
+      coins: 0,
+      rektTokens: 0,
+      lives: 3,
+      highScore: 0,
+      level: 1,
+      characterPosition: [0, 0, 0],
 
-      startGame: () => set({ 
-        isPlaying: true, 
-        isGameOver: false,
-        lives: 5,
-        score: 0
-      }),
+      /* gameplay helpers */
+      startGame: () =>
+        set({
+          isPlaying: true,
+          isGameOver: false,
+          paused: false,
+          score: 0,
+          coins: 0,
+          rektTokens: 0,
+          lives: 3,
+          characterPosition: [0, 1, 0],
+        }),
 
-      restartGame: () => set({ 
-        isPlaying: true, 
-        isGameOver: false,
-        lives: 5,
-        score: 0,
-        level: 1
-      }),
+      togglePause: () => set((s) => ({ paused: !s.paused })),
 
-      gameOver: () => {
-        const state = get();
-        const newHighScore = Math.max(state.score, state.highScore);
-        
-        set({ 
-          isPlaying: false, 
-          isGameOver: true,
-          highScore: newHighScore
-        });
+      addScore: (points) => set((s) => ({ score: s.score + points })),
 
-        // Сохраняем в localStorage
-        if (isBrowser) {
-          localStorage.setItem('rektfrog-highscore', newHighScore.toString());
-        }
-      },
+      addCoins: (amount) =>
+        set((s) => ({ coins: s.coins + amount, rektTokens: s.rektTokens + amount })),
 
-      addScore: (points) => set((state) => ({ 
-        score: state.score + points 
-      })),
+      /* legacy alias so existing components keep working */
+      addTokens: (amount) =>
+        set((s) => ({ rektTokens: s.rektTokens + amount, coins: s.coins + amount })),
 
-      addTokens: (amount) => {
-        const state = get();
-        const newTokens = state.rektTokens + amount;
-        
-        set({ rektTokens: newTokens });
-        
-        // Сохраняем в localStorage
-        if (isBrowser) {
-          localStorage.setItem('rektfrog-tokens', newTokens.toString());
-        }
-      },
+      loseLife: () =>
+        set((s) => {
+          const newLives = s.lives - 1;
+          return newLives <= 0
+            ? { lives: 0, isPlaying: false, isGameOver: true }
+            : { lives: newLives };
+        }),
 
-      loseLife: () => {
-        const state = get();
-        const newLives = state.lives - 1;
-        
-        if (newLives <= 0) {
-          get().gameOver();
-        } else {
-          set({ lives: newLives });
-        }
-      }
+      setCharacterPosition: (pos) => set({ characterPosition: pos }),
     }),
     {
-      name: 'rekt-frog-storage',
-      skipHydration: true, // Пропускаем гидратацию для избежания SSR проблем
-    }
-  )
+      name: 'game-store',
+      skipHydration: true,
+    },
+  ),
 );
