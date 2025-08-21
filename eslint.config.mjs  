@@ -16,14 +16,16 @@ export default [
       react,
     },
     settings: {
-      react: { version: 'detect' },
+      react: {
+        version: 'detect',
+      },
     },
     rules: {
       // React 19
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
 
-      // TypeScript
+      // TS
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': [
         'warn',
@@ -34,7 +36,7 @@ export default [
       'no-prototype-builtins': 'off',
       'no-undef': 'off',
 
-      // Allow R3F/three JSX custom props
+      // R3F/three JSX custom props
       'react/no-unknown-property': 'off',
     },
   },
