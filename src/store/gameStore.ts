@@ -1,121 +1,51 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
-// Проверяем что мы в браузере
-const isBrowser = typeof window !== 'undefined';
-
-// Базовые типы
-interface Character {
-  evolutionStage: number;
-  name: string;
-  emoji: string;
-  abilities: string[];
-}
-
-interface GameState {
-  isPlaying: boolean;
-  isGameOver: boolean;
-  score: number;
-  highScore: number;
-  rektTokens: number;
-  lives: number;
-  level: number;
-  character: Character;
-  
-  // Actions
-  startGame: () => void;
-  restartGame: () => void;
-  gameOver: () => void;
-  addScore: (points: number) => void;
-  addTokens: (amount: number) => void;
-  loseLife: () => void;
-}
-
-// Начальное состояние
-const initialState = {
-  isPlaying: false,
-  isGameOver: false,
-  score: 0,
-  highScore: isBrowser ? parseInt(localStorage.getItem('rektfrog-highscore') || '0') : 0,
-  rektTokens: isBrowser ? parseInt(localStorage.getItem('rektfrog-tokens') || '0') : 0,
-  lives: 5,
-  level: 1,
-  character: {
-    evolutionStage: 1,
-    name: 'REKT Frog',
-    emoji: '🐸',
-    abilities: ['Jump', 'Survive']
-  }
+type Vec3 = {
+  x: number;
+  y: number;
+  z: number;
 };
 
-export const useGameStore = create<GameState>()(
-  persist(
-    (set, get) => ({
-      ...initialState,
+interface GameState {
+  score: number;
+  coins: number;
+  lives: number;
+  paused: boolean;
+  playerPosition: Vec3;
+  playerVelocity: Vec3;
 
-      startGame: () => set({ 
-        isPlaying: true, 
-        isGameOver: false,
-        lives: 5,
-        score: 0
-      }),
+  setPaused: (paused: boolean) => void;
+  togglePause: () => void;
+  addScore: (amount: number) => void;
+  addCoin: (amount?: number) => void;
+  setPlayerPosition: (position: Vec3) => void;
+  setPlayerVelocity: (velocity: Vec3) => void;
+  reset: () => void;
+}
 
-      restartGame: () => set({ 
-        isPlaying: true, 
-        isGameOver: false,
-        lives: 5,
-        score: 0,
-        level: 1
-      }),
+export const useGameStore = create<GameState>((set) => ({
+  score: 0,
+  coins: 0,
+  lives: 3,
+  paused: true,
+  playerPosition: { x: 0, y: 1, z: 0 },
+  playerVelocity: { x: 0, y: 0, z: 0 },
 
-      gameOver: () => {
-        const state = get();
-        const newHighScore = Math.max(state.score, state.highScore);
-        
-        set({ 
-          isPlaying: false, 
-          isGameOver: true,
-          highScore: newHighScore
-        });
-
-        // Сохраняем в localStorage
-        if (isBrowser) {
-          localStorage.setItem('rektfrog-highscore', newHighScore.toString());
-        }
-      },
-
-      addScore: (points) => set((state) => ({ 
-        score: state.score + points 
-      })),
-
-      addTokens: (amount) => {
-        const state = get();
-        const newTokens = state.rektTokens + amount;
-        
-        set({ rektTokens: newTokens });
-        
-        // Сохраняем в localStorage
-        if (isBrowser) {
-          localStorage.setItem('rektfrog-tokens', newTokens.toString());
-        }
-      },
-
-      loseLife: () => {
-        const state = get();
-        const newLives = state.lives - 1;
-        
-        if (newLives <= 0) {
-          get().gameOver();
-        } else {
-          set({ lives: newLives });
-        }
-      }
+  setPaused: (paused) => set({ paused }),
+  togglePause: () => set((s) => ({ paused: !s.paused })),
+  addScore: (amount) => set((s) => ({ score: s.score + amount })),
+  addCoin: (amount = 1) => set((s) => ({ coins: s.coins + amount })),
+  setPlayerPosition: (position) => set({ playerPosition: position }),
+  setPlayerVelocity: (velocity) => set({ playerVelocity: velocity }),
+  reset: () =>
+    set({
+      score: 0,
+      coins: 0,
+      lives: 3,
+      paused: false,
+      playerPosition: { x: 0, y: 1, z: 0 },
+      playerVelocity: { x: 0, y: 0, z: 0 },
     }),
-    {
-      name: 'rekt-frog-storage',
-      skipHydration: true, // Пропускаем гидратацию для избежания SSR проблем
-    }
-  )
-);
+}));

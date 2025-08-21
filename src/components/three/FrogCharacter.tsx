@@ -1,252 +1,110 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
 import * as THREE from 'three';
+import { useGameStore } from '@/store/gameStore';
+import { GAME_CONFIG } from '@/lib/constants/gameConfig';
 
-interface FrogCharacterProps {
+type FrogCharacterProps = {
   position?: [number, number, number];
-}
+};
 
 export function FrogCharacter({ position = [0, 1, 0] }: FrogCharacterProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const frogPosition = useRef({ x: 0, y: 1, z: 0 });
-  const velocity = useRef({ x: 0, y: 0 });
-  const isJumping = useRef(false);
+  const keysRef = useRef<Record<string, boolean>>({});
+  const { paused, playerPosition, setPlayerPosition, playerVelocity, setPlayerVelocity } = useGameStore();
 
-  // Обработка клавиш
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      switch (event.code) {
-        case 'KeyA':
-        case 'ArrowLeft':
-          velocity.current.x = -0.1;
-          break;
-        case 'KeyD':
-        case 'ArrowRight':
-          velocity.current.x = 0.1;
-          break;
-        case 'Space':
-          event.preventDefault();
-          if (!isJumping.current) {
-            velocity.current.y = 0.3;
-            isJumping.current = true;
-          }
-          break;
-      }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      keysRef.current[e.code] = true;
+      if (e.code === 'Space') e.preventDefault();
     };
-
-    const handleKeyUp = (event: KeyboardEvent) => {
-      switch (event.code) {
-        case 'KeyA':
-        case 'ArrowLeft':
-        case 'KeyD':
-        case 'ArrowRight':
-          velocity.current.x = 0;
-          break;
-      }
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keysRef.current[e.code] = false;
     };
-
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, []);
 
-  // Физика и анимация
-  useFrame((state, delta) => {
-    if (!groupRef.current) return;
+  useFrame((_, dt) => {
+    if (!groupRef.current || paused) return;
+    const delta = Math.min(dt, 1 / 30);
 
-    // Гравитация
-    velocity.current.y -= 0.02;
+    const speed = GAME_CONFIG.physics.moveSpeed;
+    const gravity = GAME_CONFIG.physics.gravity;
+    const friction = GAME_CONFIG.physics.friction;
+    const jumpV = GAME_CONFIG.physics.jumpVelocity;
 
-    // Обновляем позицию
-    frogPosition.current.x += velocity.current.x;
-    frogPosition.current.y += velocity.current.y;
+    let vx = playerVelocity.x;
+    let vy = playerVelocity.y;
+    let vz = playerVelocity.z;
 
-    // Ограничиваем движение по X
-    frogPosition.current.x = Math.max(-10, Math.min(10, frogPosition.current.x));
+    let moveX = 0;
+    let moveZ = 0;
+    if (keysRef.current['KeyA'] || keysRef.current['ArrowLeft']) moveX -= 1;
+    if (keysRef.current['KeyD'] || keysRef.current['ArrowRight']) moveX += 1;
+    if (keysRef.current['KeyW'] || keysRef.current['ArrowUp']) moveZ -= 1;
+    if (keysRef.current['KeyS'] || keysRef.current['ArrowDown']) moveZ += 1;
 
-    // Проверяем землю
-    if (frogPosition.current.y <= 1) {
-      frogPosition.current.y = 1;
-      velocity.current.y = 0;
-      isJumping.current = false;
+    const len = Math.hypot(moveX, moveZ);
+    if (len > 0) {
+      moveX /= len;
+      moveZ /= len;
     }
 
-    // Применяем позицию
-    groupRef.current.position.set(
-      frogPosition.current.x,
-      frogPosition.current.y,
-      frogPosition.current.z
-    );
+    vx = moveX * speed;
+    vz = moveZ * speed;
 
-    // Анимация покачивания
-    groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 2) * 0.1;
+    // gravity
+    vy += gravity * delta;
+
+    // integrate
+    let nx = playerPosition.x + vx * delta;
+    let ny = playerPosition.y + vy * delta;
+    let nz = playerPosition.z + vz * delta;
+
+    // ground collision
+    const ground = GAME_CONFIG.world.groundY + 1; // mesh half-height ~1
+    if (ny <= ground) {
+      ny = ground;
+      if (vy < 0) vy = 0;
+      if (keysRef.current['Space']) {
+        vy = jumpV;
+      }
+    }
+
+    // simple friction on ground horizontal
+    if (ny === ground && len === 0) {
+      vx = THREE.MathUtils.damp(vx, 0, friction, delta);
+      vz = THREE.MathUtils.damp(vz, 0, friction, delta);
+      nx = playerPosition.x + vx * delta;
+      nz = playerPosition.z + vz * delta;
+    }
+
+    // world bounds
+    nx = Math.min(GAME_CONFIG.bounds.maxX, Math.max(GAME_CONFIG.bounds.minX, nx));
+    nz = Math.min(GAME_CONFIG.bounds.maxZ, Math.max(GAME_CONFIG.bounds.minZ, nz));
+
+    setPlayerVelocity({ x: vx, y: vy, z: vz });
+    setPlayerPosition({ x: nx, y: ny, z: nz });
+
+    groupRef.current.position.set(nx, ny, nz);
   });
 
   return (
     <group ref={groupRef} position={position}>
-      {/* РЕАЛИСТИЧНОЕ ТЕЛО ЛЯГУШКИ */}
       <mesh castShadow>
-        <sphereGeometry args={[1.2, 32, 32]} />
-        <meshStandardMaterial 
-          color="#2d8f47"
-          roughness={0.1}
-          metalness={0.2}
-        />
+        <capsuleGeometry args={[0.6, 0.8, 8, 16]} />
+        <meshStandardMaterial color="#2d8f47" roughness={0.5} metalness={0.1} />
       </mesh>
-
-      {/* БОЛЬШИЕ РЕАЛИСТИЧНЫЕ ГЛАЗА */}
-      <mesh position={[-0.4, 0.6, 0.8]} castShadow>
-        <sphereGeometry args={[0.35, 16, 16]} />
-        <meshStandardMaterial 
-          color="#ffffff" 
-          roughness={0.1}
-          metalness={0.8}
-        />
-      </mesh>
-      <mesh position={[0.4, 0.6, 0.8]} castShadow>
-        <sphereGeometry args={[0.35, 16, 16]} />
-        <meshStandardMaterial 
-          color="#ffffff"
-          roughness={0.1}
-          metalness={0.8}
-        />
-      </mesh>
-
-      {/* БЛЕСТЯЩИЕ ЗРАЧКИ */}
-      <mesh position={[-0.4, 0.6, 1.1]} castShadow>
-        <sphereGeometry args={[0.15, 16, 16]} />
-        <meshStandardMaterial 
-          color="#000000"
-          roughness={0.0}
-          metalness={1.0}
-        />
-      </mesh>
-      <mesh position={[0.4, 0.6, 1.1]} castShadow>
-        <sphereGeometry args={[0.15, 16, 16]} />
-        <meshStandardMaterial 
-          color="#000000"
-          roughness={0.0}
-          metalness={1.0}
-        />
-      </mesh>
-
-      {/* БЛИКИ НА ГЛАЗАХ */}
-      <mesh position={[-0.35, 0.65, 1.2]}>
-        <sphereGeometry args={[0.05, 8, 8]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
-      <mesh position={[0.45, 0.65, 1.2]}>
-        <sphereGeometry args={[0.05, 8, 8]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
-
-      {/* УЛЫБКА */}
-      <mesh position={[0, 0.2, 1.0]} castShadow rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.3, 0.05, 8, 16, Math.PI]} />
-        <meshStandardMaterial color="#1a4d2e" />
-      </mesh>
-
-      {/* МОЩНЫЕ ПЕРЕДНИЕ ЛАПЫ */}
-      <mesh position={[-0.8, -0.3, 0.5]} castShadow>
-        <sphereGeometry args={[0.4, 16, 16]} />
-        <meshStandardMaterial color="#1f5f3f" />
-      </mesh>
-      <mesh position={[0.8, -0.3, 0.5]} castShadow>
-        <sphereGeometry args={[0.4, 16, 16]} />
-        <meshStandardMaterial color="#1f5f3f" />
-      </mesh>
-      
-      {/* ЗАДНИЕ ЛАПЫ (используем сплющенные сферы вместо ellipsoid) */}
-      <mesh position={[-0.6, -0.6, -0.4]} castShadow scale={[0.8, 0.5, 1.5]}>
-        <sphereGeometry args={[0.35, 16, 16]} />
-        <meshStandardMaterial color="#1f5f3f" />
-      </mesh>
-      <mesh position={[0.6, -0.6, -0.4]} castShadow scale={[0.8, 0.5, 1.5]}>
-        <sphereGeometry args={[0.35, 16, 16]} />
-        <meshStandardMaterial color="#1f5f3f" />
-      </mesh>
-
-      {/* ПЯТНА НА СПИНЕ */}
-      <mesh position={[0, 0.8, -0.2]} castShadow>
-        <sphereGeometry args={[0.2, 8, 8]} />
-        <meshStandardMaterial color="#1a4d2e" />
-      </mesh>
-      <mesh position={[-0.3, 0.7, 0.1]} castShadow>
-        <sphereGeometry args={[0.15, 8, 8]} />
-        <meshStandardMaterial color="#1a4d2e" />
-      </mesh>
-      <mesh position={[0.4, 0.6, -0.1]} castShadow>
-        <sphereGeometry args={[0.18, 8, 8]} />
-        <meshStandardMaterial color="#1a4d2e" />
-      </mesh>
-
-      {/* ДОПОЛНИТЕЛЬНЫЕ ДЕТАЛИ - ПЕРЕПОНКИ НА ЛАПАХ */}
-      <mesh position={[-0.8, -0.5, 0.7]} castShadow rotation={[0, 0, Math.PI / 4]}>
-        <coneGeometry args={[0.2, 0.1, 3]} />
-        <meshStandardMaterial color="#0f3f2f" transparent opacity={0.7} />
-      </mesh>
-      <mesh position={[0.8, -0.5, 0.7]} castShadow rotation={[0, 0, -Math.PI / 4]}>
-        <coneGeometry args={[0.2, 0.1, 3]} />
-        <meshStandardMaterial color="#0f3f2f" transparent opacity={0.7} />
-      </mesh>
-
-      {/* ЭМОДЗИ НАД ГОЛОВОЙ */}
-      <Text
-        position={[0, 2.2, 0]}
-        fontSize={1.0}
-        color="#ffffff"
-        anchorX="center"
-        anchorY="middle"
-      >
-        🐸
-      </Text>
-
-      {/* ИМЯ С КРУТЫМ ШРИФТОМ */}
-      <Text
-        position={[0, 2.8, 0]}
-        fontSize={0.4}
-        color="#00ff88"
-        anchorX="center"
-        anchorY="middle"
-        fontWeight={800}
-      >
-        REKT FROG
-      </Text>
-
-      {/* АУРА СВЕЧЕНИЯ */}
-      <mesh>
-        <sphereGeometry args={[1.8, 16, 16]} />
-        <meshBasicMaterial 
-          color="#00ff88" 
-          transparent 
-          opacity={0.1}
-        />
-      </mesh>
-
-      {/* ЭНЕРГЕТИЧЕСКИЕ КОЛЬЦА */}
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[2.0, 0.05, 8, 32]} />
-        <meshBasicMaterial 
-          color="#00ffaa" 
-          transparent 
-          opacity={0.3}
-        />
-      </mesh>
-      
-      <mesh rotation={[0, 0, Math.PI / 2]}>
-        <torusGeometry args={[2.2, 0.03, 8, 32]} />
-        <meshBasicMaterial 
-          color="#aaffff" 
-          transparent 
-          opacity={0.2}
-        />
+      <mesh position={[0, 1.1, 0]}>
+        <sphereGeometry args={[0.25, 16, 16]} />
+        <meshStandardMaterial color="#ffffff" />
       </mesh>
     </group>
   );
