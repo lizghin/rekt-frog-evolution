@@ -1,142 +1,218 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import { Suspense, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { 
-  OrbitControls, 
-  Environment, 
-  ContactShadows,
-  Sparkles,
-  Stars
+import {
+  OrbitControls,
+  Environment,
+  Grid,
+  Sky,
+  Stats,
+  PerspectiveCamera,
+  Html,
+  useProgress,
 } from '@react-three/drei';
+import * as THREE from 'three';
+
+// NEW: постобработка
+import { EffectComposer, Bloom, Vignette, Noise } from '@react-three/postprocessing';
+
+// Game Components
 import { FrogCharacter } from '@/components/three/FrogCharacter';
 import { Coin } from '@/components/three/Coin';
+// Если есть враги/пауэрапы — вернёшь позже
+// import { RugPull } from '@/components/game/enemies/RugPull';
+// import { BearBot } from '@/components/game/enemies/BearBot';
+// import { UnrektBomb } from '@/components/game/powerups/UnrektBomb';
+// import { LedgerShield } from '@/components/game/powerups/LedgerShield';
+// import { GameLoop } from '@/components/game/GameLoop';
 
-export function GameScene({ className }: { className?: string }) {
+// Game State
+import { useGameStore } from '@/store/gameStore';
+// import { EnemyType, PowerUpType } from '@/types/game';
+
+// NEW: наши графические константы
+import { GRAPHICS } from '@/lib/constants/graphics';
+
+function Loader() {
+  const { progress } = useProgress();
   return (
-    <div className={className}>
-      <Canvas
-        shadows
-        camera={{ position: [0, 8, 12], fov: 60 }}
-        style={{ background: 'radial-gradient(circle, #1a1a2e 0%, #16213e 50%, #0f0f1e 100%)' }}
+    <Html center>
+      <div className="text-white text-center">
+        <div className="text-2xl font-bold mb-4">🐸 Loading REKT Frog...</div>
+        <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="mt-2 text-sm text-gray-400">{Math.round(progress)}%</div>
+      </div>
+    </Html>
+  );
+}
+
+function GameWorld() {
+  const cameraRef = useRef<THREE.PerspectiveCamera>(null);
+
+  const { character, /*enemies, coins, powerUps,*/ isPlaying, settings } = useGameStore();
+
+  // СВЕТ — читаем из констант
+  const ambient = GRAPHICS.lights.ambient;
+  const dir = GRAPHICS.lights.directional;
+
+  // Режимы можно подправлять в зависимости от gameplay-состояния
+  const ambientIntensity = isPlaying ? ambient.intensity : ambient.intensity + 0.1;
+  const directionalIntensity = isPlaying ? dir.intensity : dir.intensity * 0.85;
+
+  return (
+    <>
+      {/* Камера */}
+      <PerspectiveCamera
+        ref={cameraRef}
+        makeDefault
+        position={GRAPHICS.camera.startPos}
+        fov={GRAPHICS.camera.fov}
+        near={GRAPHICS.camera.near}
+        far={GRAPHICS.camera.far}
+      />
+
+      {/* Управление камерой */}
+      <OrbitControls
+        enablePan={GRAPHICS.camera.orbit.enablePan}
+        enableZoom={GRAPHICS.camera.orbit.enableZoom}
+        enableRotate={GRAPHICS.camera.orbit.enableRotate}
+        minDistance={GRAPHICS.camera.orbit.minDistance}
+        maxDistance={GRAPHICS.camera.orbit.maxDistance}
+        maxPolarAngle={GRAPHICS.camera.orbit.maxPolarAngle}
+        autoRotate={GRAPHICS.camera.orbit.autoRotate && !isPlaying}
+        autoRotateSpeed={GRAPHICS.camera.orbit.autoRotateSpeed}
+      />
+
+      {/* Свет */}
+      <ambientLight intensity={ambientIntensity} color={ambient.color} />
+      <directionalLight
+        position={dir.position}
+        intensity={directionalIntensity}
+        color={dir.color}
+        castShadow
+        shadow-mapSize-width={dir.shadow.mapSize}
+        shadow-mapSize-height={dir.shadow.mapSize}
+        shadow-camera-far={dir.shadow.camera.far}
+        shadow-camera-left={dir.shadow.camera.left}
+        shadow-camera-right={dir.shadow.camera.right}
+        shadow-camera-top={dir.shadow.camera.top}
+        shadow-camera-bottom={dir.shadow.camera.bottom}
+      />
+
+      {/* Окружение / HDRI
+         Позже можно заменить на файл из /public/hdr/*.hdr через <Environment files="/hdr/xxx.hdr" />
+      */}
+      <Environment preset="city" background blur={0.6} />
+      <Sky
+        distance={450000}
+        sunPosition={[0, 1, 0]}
+        inclination={0}
+        azimuth={0.25}
+        rayleigh={0.5}
+        turbidity={10}
+        mieCoefficient={0.005}
+        mieDirectionalG={0.7}
+      />
+
+      {/* Земля */}
+      <mesh
+        receiveShadow
+        position={[0, 0, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
       >
-        <Suspense fallback={null}>
-          {/* ПРОДВИНУТОЕ ОСВЕЩЕНИЕ */}
-          <ambientLight intensity={0.3} color="#4a5568" />
-          <directionalLight 
-            position={[10, 15, 5]} 
-            intensity={1.2}
-            castShadow
-            shadow-mapSize-width={4096}
-            shadow-mapSize-height={4096}
-            shadow-camera-far={50}
-            shadow-camera-left={-20}
-            shadow-camera-right={20}
-            shadow-camera-top={20}
-            shadow-camera-bottom={-20}
-          />
-          
-          {/* ЦВЕТНЫЕ ACCENT LIGHTS */}
-          <pointLight position={[-10, 5, -10]} intensity={0.5} color="#ff6b6b" />
-          <pointLight position={[10, 5, 10]} intensity={0.5} color="#4ecdc4" />
-          <pointLight position={[0, 10, 0]} intensity={0.3} color="#ffe66d" />
+        <planeGeometry args={[GRAPHICS.ground.size.width, GRAPHICS.ground.size.depth]} />
+        <meshStandardMaterial
+          color={GRAPHICS.ground.color}
+          roughness={GRAPHICS.ground.roughness}
+          metalness={GRAPHICS.ground.metalness}
+        />
+      </mesh>
 
-          {/* ГЛАВНЫЙ ПЕРСОНАЖ */}
-          <FrogCharacter position={[0, 1, 0]} />
+      {/* Сетка для ориентира (можно скрыть позже) */}
+      <Grid
+        position={[0, 0.01, 0]}
+        args={[GRAPHICS.ground.size.width, GRAPHICS.ground.size.depth]}
+        cellSize={5}
+        cellThickness={0.5}
+        cellColor="#3b3b3b"
+        sectionSize={25}
+        sectionThickness={1}
+        sectionColor="#555"
+        fadeDistance={100}
+        fadeStrength={1}
+      />
 
-          {/* СТИЛЬНЫЕ ПЛАТФОРМЫ */}
-          <mesh receiveShadow position={[0, -1, 0]}>
-            <boxGeometry args={[40, 1, 20]} />
-            <meshStandardMaterial 
-              color="#2d3748"
-              roughness={0.8}
-              metalness={0.2}
+      {/* Главный персонаж */}
+      <FrogCharacter />
+
+      {/* Пример монет (если у тебя есть генерация — оставь её) */}
+      <Coin id="c1" position={[3, 2, 1]} />
+      <Coin id="c2" position={[-2, 3, -1]} />
+      <Coin id="c3" position={[6, 1.5, 4]} />
+
+      {/* Производительность (оставим для high/ultra) */}
+      {settings?.graphics === 'ultra' && <Stats />}
+
+      {/* Если у тебя был главный цикл — вернёшь позже */}
+      {/* <GameLoop /> */}
+    </>
+  );
+}
+
+interface GameSceneProps {
+  className?: string;
+}
+
+export function GameScene({ className = '' }: GameSceneProps) {
+  const { settings } = useGameStore();
+
+  // DPR и тени из конфига
+  const quality = (settings?.graphics ?? 'high') as 'low' | 'medium' | 'high' | 'ultra';
+  const dpr = GRAPHICS.renderer.dprByQuality[quality];
+  const shadows = GRAPHICS.renderer.shadows[quality];
+  const antialias = quality === 'high' || quality === 'ultra';
+
+  return (
+    <div className={`w-full h-full ${className}`}>
+      <Canvas
+        shadows={shadows}
+        dpr={dpr}
+        gl={{
+          antialias,
+          alpha: false,
+          stencil: false,
+          depth: true,
+          powerPreference: quality === 'low' ? 'low-power' : 'high-performance',
+          preserveDrawingBuffer: false,
+        }}
+        camera={{ fov: GRAPHICS.camera.fov, near: GRAPHICS.camera.near, far: GRAPHICS.camera.far }}
+      >
+        <Suspense fallback={<Loader />}>
+          <GameWorld />
+
+          {/* Пост-обработка */}
+          <EffectComposer>
+            <Bloom
+              intensity={GRAPHICS.postfx.bloom.intensity}
+              luminanceThreshold={GRAPHICS.postfx.bloom.luminanceThreshold}
+              luminanceSmoothing={GRAPHICS.postfx.bloom.luminanceSmoothing}
             />
-          </mesh>
-
-          {/* ВЫСОКИЕ ПЛАТФОРМЫ */}
-          <mesh receiveShadow position={[5, 0, 3]} castShadow>
-            <boxGeometry args={[3, 0.5, 3]} />
-            <meshStandardMaterial 
-              color="#4a5568"
-              roughness={0.6}
-              metalness={0.4}
-              emissive="#1a365d"
-              emissiveIntensity={0.1}
+            <Vignette
+              eskil={GRAPHICS.postfx.vignette.eskil}
+              offset={GRAPHICS.postfx.vignette.offset}
+              darkness={GRAPHICS.postfx.vignette.darkness}
             />
-          </mesh>
-          
-          <mesh receiveShadow position={[-4, 1, -2]} castShadow>
-            <boxGeometry args={[2, 0.5, 2]} />
-            <meshStandardMaterial 
-              color="#4a5568"
-              roughness={0.6}
-              metalness={0.4}
-              emissive="#2d1b69"
-              emissiveIntensity={0.1}
+            <Noise
+              premultiply={GRAPHICS.postfx.noise.premultiply}
+              opacity={GRAPHICS.postfx.noise.opacity}
             />
-          </mesh>
-
-          <mesh receiveShadow position={[2, 2, -5]} castShadow>
-            <boxGeometry args={[4, 0.5, 2]} />
-            <meshStandardMaterial 
-              color="#4a5568"
-              roughness={0.6}
-              metalness={0.4}
-              emissive="#553c9a"
-              emissiveIntensity={0.1}
-            />
-          </mesh>
-
-          {/* СУПЕР МОНЕТЫ */}
-          <Coin position={[3, 2.5, 1]} id="coin1" />
-          <Coin position={[-2, 3.5, -1]} id="coin2" />
-          <Coin position={[6, 2, 4]} id="coin3" />
-          <Coin position={[-3, 3, -3]} id="coin4" />
-          <Coin position={[1, 4, -6]} id="coin5" />
-
-          {/* PARTICLE EFFECTS */}
-          <Sparkles 
-            count={100}
-            scale={[20, 10, 20]}
-            size={2}
-            speed={0.4}
-            color="#ffd700"
-          />
-          
-          <Stars 
-            radius={100}
-            depth={50}
-            count={500}
-            factor={4}
-            saturation={0}
-            fade
-          />
-
-          {/* ПРОФЕССИОНАЛЬНЫЕ ТЕНИ */}
-          <ContactShadows 
-            position={[0, -0.99, 0]} 
-            opacity={0.8} 
-            scale={30} 
-            blur={3} 
-            far={6}
-            color="#1a365d"
-          />
-          
-          {/* КРАСИВОЕ ОКРУЖЕНИЕ */}
-          <Environment preset="night" />
-          
-          {/* УПРАВЛЕНИЕ КАМЕРОЙ */}
-          <OrbitControls 
-            enablePan={false} 
-            enableZoom={true} 
-            enableRotate={true}
-            maxDistance={25}
-            minDistance={5}
-            maxPolarAngle={Math.PI / 2.2}
-            autoRotate={false}
-            autoRotateSpeed={0.5}
-          />
+          </EffectComposer>
         </Suspense>
       </Canvas>
     </div>
