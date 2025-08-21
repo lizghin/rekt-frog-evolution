@@ -1,121 +1,76 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-
-// Проверяем что мы в браузере
-const isBrowser = typeof window !== 'undefined';
-
-// Базовые типы
-interface Character {
-  evolutionStage: number;
-  name: string;
-  emoji: string;
-  abilities: string[];
-}
+import { GAME_CONFIG } from '@/lib/constants/gameConfig';
 
 interface GameState {
+  // Game state
   isPlaying: boolean;
-  isGameOver: boolean;
+  isPaused: boolean;
   score: number;
-  highScore: number;
-  rektTokens: number;
+  coins: number;
   lives: number;
-  level: number;
-  character: Character;
+  
+  // Character state
+  characterPosition: [number, number, number];
+  characterVelocity: [number, number, number];
   
   // Actions
   startGame: () => void;
-  restartGame: () => void;
-  gameOver: () => void;
+  pauseGame: () => void;
+  resumeGame: () => void;
   addScore: (points: number) => void;
-  addTokens: (amount: number) => void;
+  addCoins: (amount: number) => void;
   loseLife: () => void;
+  updateCharacterPosition: (position: [number, number, number]) => void;
+  updateCharacterVelocity: (velocity: [number, number, number]) => void;
 }
 
-// Начальное состояние
-const initialState = {
+export const useGameStore = create<GameState>((set, get) => ({
+  // Initial state
   isPlaying: false,
-  isGameOver: false,
+  isPaused: false,
   score: 0,
-  highScore: isBrowser ? parseInt(localStorage.getItem('rektfrog-highscore') || '0') : 0,
-  rektTokens: isBrowser ? parseInt(localStorage.getItem('rektfrog-tokens') || '0') : 0,
-  lives: 5,
-  level: 1,
-  character: {
-    evolutionStage: 1,
-    name: 'REKT Frog',
-    emoji: '🐸',
-    abilities: ['Jump', 'Survive']
-  }
-};
+  coins: 0,
+  lives: GAME_CONFIG.PLAYER.LIVES,
+  characterPosition: [0, 1, 0],
+  characterVelocity: [0, 0, 0],
 
-export const useGameStore = create<GameState>()(
-  persist(
-    (set, get) => ({
-      ...initialState,
+  // Actions
+  startGame: () => set({ 
+    isPlaying: true, 
+    isPaused: false,
+    score: 0,
+    coins: 0,
+    lives: GAME_CONFIG.PLAYER.LIVES,
+    characterPosition: [0, 1, 0],
+    characterVelocity: [0, 0, 0]
+  }),
 
-      startGame: () => set({ 
-        isPlaying: true, 
-        isGameOver: false,
-        lives: 5,
-        score: 0
-      }),
+  pauseGame: () => set({ isPaused: true }),
+  
+  resumeGame: () => set({ isPaused: false }),
 
-      restartGame: () => set({ 
-        isPlaying: true, 
-        isGameOver: false,
-        lives: 5,
-        score: 0,
-        level: 1
-      }),
+  addScore: (points) => set((state) => ({ 
+    score: state.score + points 
+  })),
 
-      gameOver: () => {
-        const state = get();
-        const newHighScore = Math.max(state.score, state.highScore);
-        
-        set({ 
-          isPlaying: false, 
-          isGameOver: true,
-          highScore: newHighScore
-        });
+  addCoins: (amount) => set((state) => ({ 
+    coins: state.coins + amount 
+  })),
 
-        // Сохраняем в localStorage
-        if (isBrowser) {
-          localStorage.setItem('rektfrog-highscore', newHighScore.toString());
-        }
-      },
-
-      addScore: (points) => set((state) => ({ 
-        score: state.score + points 
-      })),
-
-      addTokens: (amount) => {
-        const state = get();
-        const newTokens = state.rektTokens + amount;
-        
-        set({ rektTokens: newTokens });
-        
-        // Сохраняем в localStorage
-        if (isBrowser) {
-          localStorage.setItem('rektfrog-tokens', newTokens.toString());
-        }
-      },
-
-      loseLife: () => {
-        const state = get();
-        const newLives = state.lives - 1;
-        
-        if (newLives <= 0) {
-          get().gameOver();
-        } else {
-          set({ lives: newLives });
-        }
-      }
-    }),
-    {
-      name: 'rekt-frog-storage',
-      skipHydration: true, // Пропускаем гидратацию для избежания SSR проблем
+  loseLife: () => {
+    const state = get();
+    const newLives = state.lives - 1;
+    
+    if (newLives <= 0) {
+      set({ isPlaying: false, lives: 0 });
+    } else {
+      set({ lives: newLives });
     }
-  )
-);
+  },
+
+  updateCharacterPosition: (position) => set({ characterPosition: position }),
+  
+  updateCharacterVelocity: (velocity) => set({ characterVelocity: velocity })
+}));

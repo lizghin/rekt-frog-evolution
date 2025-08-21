@@ -2,50 +2,29 @@ import { EvolutionStage, PowerUpType, EnemyType } from '@/types/game';
 
 export const GAME_CONFIG = {
   WORLD: {
-    WIDTH: 100,
-    HEIGHT: 20,
-    DEPTH: 50,
-    GRAVITY: -9.81,
+    WIDTH: 20,
+    HEIGHT: 10,
+    DEPTH: 20,
+    GRAVITY: -0.02,
     GROUND_LEVEL: 0
   },
   
   PLAYER: {
-    INITIAL_HEALTH: 100,
-    INITIAL_LIVES: 3,
-    INITIAL_SPEED: 5,
-    JUMP_FORCE: 15,
-    INVULNERABILITY_DURATION: 2000,
-    EVOLUTION_EXP_BASE: 100
+    SPEED: 0.1,
+    JUMP_FORCE: 0.3,
+    LIVES: 3
   },
 
-  PHYSICS: {
-    FRICTION: 0.8,
-    AIR_RESISTANCE: 0.95,
-    BOUNCE_DAMPING: 0.6,
-    COLLISION_THRESHOLD: 0.1
+  COIN: {
+    COLLECTION_DISTANCE: 2,
+    VALUE: 100
   },
 
-  SPAWNING: {
-    COIN_SPAWN_RATE: 0.02,
-    POWERUP_SPAWN_RATE: 0.005,
-    ENEMY_BASE_SPAWN_RATE: 0.01,
-    MAX_ENEMIES: 15,
-    MAX_COINS: 25,
-    MAX_POWERUPS: 5
-  },
-
-  SCORING: {
-    COIN_BASE_VALUE: 10,
-    ENEMY_KILL_BASE: 50,
-    SURVIVAL_BONUS_PER_SECOND: 1,
-    COMBO_MULTIPLIER: 1.2,
-    EVOLUTION_BONUS: 1000
-  },
-
-  DIFFICULTY: {
-    SCALE_FACTOR: 1.1,
-    LEVEL_DURATION: 30000,
-    MAX_DIFFICULTY: 5.0
+  CONTROLS: {
+    MOVE_LEFT: ['KeyA', 'ArrowLeft'],
+    MOVE_RIGHT: ['KeyD', 'ArrowRight'],
+    JUMP: ['Space'],
+    PAUSE: ['Escape']
   }
 } as const;
 
