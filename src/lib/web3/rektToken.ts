@@ -28,7 +28,7 @@ export const REKT_TOKEN_ABI = [
 
 export class RektTokenContract {
   private contract: Contract | null = null;
-  private provider: ethers.Provider | null = null;
+  private provider: ethers.BrowserProvider | null = null;
   private signer: ethers.Signer | null = null;
 
   constructor() {

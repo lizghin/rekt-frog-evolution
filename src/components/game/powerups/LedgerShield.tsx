@@ -16,7 +16,12 @@ export function LedgerShield({ powerUp }: LedgerShieldProps) {
   const shieldRef = useRef<THREE.Mesh>(null);
   const timeRef = useRef(0);
   
-  const { collectPowerUp, character } = useGameStore();
+  // TODO: These functions will be implemented in the next phase
+  // const { collectPowerUp, character } = useGameStore();
+  
+  // Temporary mock data for now
+  const character = { position: { x: 0, y: 0, z: 0 } };
+  const collectPowerUp = () => {};
   const config = POWERUP_CONFIGS[PowerUpType.LEDGER_SHIELD];
 
   // Animation and collection logic
@@ -46,7 +51,7 @@ export function LedgerShield({ powerUp }: LedgerShieldProps) {
     );
 
     if (playerDistance < 1.0) {
-      collectPowerUp(powerUp.id);
+      collectPowerUp();
     }
 
     // Warning flash when about to despawn
@@ -205,8 +210,6 @@ export function LedgerShield({ powerUp }: LedgerShieldProps) {
           <sphereGeometry args={[0.02]} />
           <meshBasicMaterial
             color="#00FF00"
-            emissive="#00FF00"
-            emissiveIntensity={Math.sin(timeRef.current * 5 + i) * 0.5 + 0.5}
           />
         </mesh>
       ))}

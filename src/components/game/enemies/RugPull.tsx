@@ -18,7 +18,13 @@ export function RugPull({ enemy }: RugPullProps) {
   const timeRef = useRef(0);
   const activationRef = useRef(false);
 
-  const { character, damageCharacter, removeEnemy } = useGameStore();
+  // TODO: These functions will be implemented in the next phase
+  // const { character, damageCharacter, removeEnemy } = useGameStore();
+  
+  // Temporary mock data for now
+  const character = { position: { x: 0, y: 0, z: 0 }, isGrounded: true };
+  const damageCharacter = () => {};
+  const removeEnemy = () => {};
   const config = ENEMY_CONFIGS.rugpull;
 
   // Trap detection - check if player is close enough
@@ -41,11 +47,11 @@ export function RugPull({ enemy }: RugPullProps) {
       setIsActivated(true);
       
       // Deal damage to player
-      damageCharacter(config.damage);
+      damageCharacter();
       
       // Remove the trap after activation
       setTimeout(() => {
-        removeEnemy(enemy.id);
+        removeEnemy();
       }, 1000);
     }
 
@@ -122,11 +128,11 @@ export function RugPull({ enemy }: RugPullProps) {
       {playerInRange && !isActivated && (
         <group>
           {/* Corner warning lights */}
-          {[
-            [-0.9, 0, -0.9],
-            [0.9, 0, -0.9],
-            [-0.9, 0, 0.9],
-            [0.9, 0, 0.9]
+          {          [
+            [-0.9, 0, -0.9] as [number, number, number],
+            [0.9, 0, -0.9] as [number, number, number],
+            [-0.9, 0, 0.9] as [number, number, number],
+            [0.9, 0, 0.9] as [number, number, number]
           ].map((pos, index) => (
             <mesh key={index} position={pos}>
               <sphereGeometry args={[0.05]} />

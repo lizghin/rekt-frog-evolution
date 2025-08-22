@@ -22,8 +22,8 @@ export default function HomePage() {
     rektTokens,
     startGame,
     restartGame,
-    pause,
-    resume,
+    pauseGame,
+    resumeGame,
     character,
   } = useGameStore();
 
@@ -32,21 +32,37 @@ export default function HomePage() {
     if (isPlaying) setShowMenu(false);
   }, [isPlaying]);
 
-  // Горячая клавиша Esc: пауза/резюм/старт
+  // Горячие клавиши
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+              if (e.key === 'Escape') {
+          if (isPlaying) {
+            if (isPaused) {
+              resumeGame();
+            } else {
+              pauseGame();
+            }
+          } else {
+            startGame();
+            setShowMenu(false);
+          }
+        } else if (e.key === 'p' || e.key === 'P') {
         if (isPlaying) {
-          isPaused ? resume() : pause();
-        } else {
-          startGame();
-          setShowMenu(false);
+          if (isPaused) {
+            resumeGame();
+          } else {
+            pauseGame();
+          }
+        }
+      } else if (e.key === 'm' || e.key === 'M') {
+        if (walletConnected) {
+          setShowShop(!showShop);
         }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isPlaying, isPaused, pause, resume, startGame]);
+  }, [isPlaying, isPaused, pauseGame, resumeGame, startGame, walletConnected, showShop]);
 
   const handleStartGame = () => {
     startGame();
@@ -67,6 +83,17 @@ export default function HomePage() {
 
       {/* HUD — показываем в игре (и на паузе тоже полезно видеть статы) */}
       {isPlaying && <GameHUD />}
+
+      {/* Pause Overlay */}
+      {isPlaying && isPaused && (
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-30">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⏸️</div>
+            <div className="text-3xl font-bold text-white mb-2">GAME PAUSED</div>
+            <div className="text-gray-300 text-lg">Press ESC or P to resume</div>
+          </div>
+        </div>
+      )}
 
       {/* Главное меню */}
       {showMenu && (

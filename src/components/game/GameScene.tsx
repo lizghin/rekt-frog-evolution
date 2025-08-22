@@ -20,12 +20,12 @@ import { EffectComposer, Bloom, Vignette, Noise } from '@react-three/postprocess
 // Game Components
 import { FrogCharacter } from '@/components/three/FrogCharacter';
 import { Coin } from '@/components/three/Coin';
+import { GameLoop } from '@/components/game/GameLoop';
 // Если есть враги/пауэрапы — вернёшь позже
 // import { RugPull } from '@/components/game/enemies/RugPull';
 // import { BearBot } from '@/components/game/enemies/BearBot';
 // import { UnrektBomb } from '@/components/game/powerups/UnrektBomb';
 // import { LedgerShield } from '@/components/game/powerups/LedgerShield';
-// import { GameLoop } from '@/components/game/GameLoop';
 
 // Game State
 import { useGameStore } from '@/store/gameStore';
@@ -55,7 +55,7 @@ function Loader() {
 function GameWorld() {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
 
-  const { character, /*enemies, coins, powerUps,*/ isPlaying, settings } = useGameStore();
+  const { /*character, enemies, coins, powerUps,*/ isPlaying } = useGameStore();
 
   // СВЕТ — читаем из констант
   const ambient = GRAPHICS.lights.ambient;
@@ -120,6 +120,9 @@ function GameWorld() {
         mieDirectionalG={0.7}
       />
 
+      {/* Fog for depth */}
+      <fog attach="fog" args={[GRAPHICS.fog.color, GRAPHICS.fog.near, GRAPHICS.fog.far]} />
+
       {/* Земля */}
       <mesh
         receiveShadow
@@ -157,10 +160,10 @@ function GameWorld() {
       <Coin id="c3" position={[6, 1.5, 4]} />
 
       {/* Производительность (оставим для high/ultra) */}
-      {settings?.graphics === 'ultra' && <Stats />}
+      {false && <Stats />}
 
-      {/* Если у тебя был главный цикл — вернёшь позже */}
-      {/* <GameLoop /> */}
+      {/* Game Loop */}
+      <GameLoop />
     </>
   );
 }
@@ -170,10 +173,9 @@ interface GameSceneProps {
 }
 
 export function GameScene({ className = '' }: GameSceneProps) {
-  const { settings } = useGameStore();
 
   // DPR и тени из конфига
-  const quality = (settings?.graphics ?? 'high') as 'low' | 'medium' | 'high' | 'ultra';
+  const quality = 'high' as 'low' | 'medium' | 'high' | 'ultra';
   const dpr = GRAPHICS.renderer.dprByQuality[quality];
   const shadows = GRAPHICS.renderer.shadows[quality];
   const antialias = quality === 'high' || quality === 'ultra';

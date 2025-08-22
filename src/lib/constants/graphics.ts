@@ -18,13 +18,13 @@ export const GRAPHICS = {
     },
   
     lights: {
-      ambient: { intensity: 0.45, color: '#ffffff' },
+      ambient: { intensity: 0.6, color: '#87CEEB' },
       directional: {
         position: [30, 40, 20] as [number, number, number],
-        intensity: 1.1,
-        color: '#ffffff',
+        intensity: 1.2,
+        color: '#FFD700',
         shadow: {
-          mapSize: 1024,
+          mapSize: 2048,
           camera: {
             far: 120,
             left: -60,
@@ -71,8 +71,14 @@ export const GRAPHICS = {
   
     ground: {
       size: { width: 100, depth: 50 },
-      color: '#263226',
-      roughness: 0.9,
-      metalness: 0.05,
+      color: '#2F4F2F',
+      roughness: 0.8,
+      metalness: 0.1,
+    },
+
+    fog: {
+      color: '#87CEEB',
+      near: 10,
+      far: 80,
     },
   } as const;

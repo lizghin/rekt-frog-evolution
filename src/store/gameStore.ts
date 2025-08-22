@@ -1,12 +1,9 @@
 'use client';
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-// Безопасная проверка браузера (SSR не упадёт)
 const isBrowser = typeof window !== 'undefined';
 
-/** Базовые типы */
 interface Character {
   evolutionStage: number;
   name: string;
@@ -15,19 +12,17 @@ interface Character {
 }
 
 interface GameState {
-  // состояние
   isPlaying: boolean;
-  isPaused: boolean;      // ← добавили
+  isPaused: boolean;
   isGameOver: boolean;
   score: number;
   highScore: number;
   rektTokens: number;
   lives: number;
   level: number;
-  gameTime: number;       // ← добавили (мс с начала рана)
+  gameTime: number;
   character: Character;
 
-  // действия
   startGame: () => void;
   restartGame: () => void;
   gameOver: () => void;
@@ -36,32 +31,25 @@ interface GameState {
   addTokens: (amount: number) => void;
   loseLife: () => void;
 
-  pauseGame: () => void;      // ← добавили
-  resumeGame: () => void;     // ← добавили
-  togglePause: () => void;    // ← добавили
-  tick: (deltaMs: number) => void; // ← добавили, наращивает gameTime
+  pauseGame: () => void;
+  resumeGame: () => void;
+  togglePause: () => void;
+
+  tick: (deltaMs: number) => void;
 }
 
-/** Начальное состояние */
-const initialState: Omit<
-  GameState,
-  | 'startGame'
-  | 'restartGame'
-  | 'gameOver'
-  | 'addScore'
-  | 'addTokens'
-  | 'loseLife'
-  | 'pauseGame'
-  | 'resumeGame'
-  | 'togglePause'
+const initialState: Omit<GameState,
+  | 'startGame' | 'restartGame' | 'gameOver'
+  | 'addScore' | 'addTokens' | 'loseLife'
+  | 'pauseGame' | 'resumeGame' | 'togglePause'
   | 'tick'
 > = {
   isPlaying: false,
   isPaused: false,
   isGameOver: false,
   score: 0,
-  highScore: isBrowser ? parseInt(localStorage.getItem('rektfrog-highscore') || '0') : 0,
-  rektTokens: isBrowser ? parseInt(localStorage.getItem('rektfrog-tokens') || '0') : 0,
+  highScore: isBrowser ? parseInt(window.localStorage.getItem('rektfrog-highscore') || '0') : 0,
+  rektTokens: isBrowser ? parseInt(window.localStorage.getItem('rektfrog-tokens') || '0') : 0,
   lives: 5,
   level: 1,
   gameTime: 0,
@@ -78,70 +66,37 @@ export const useGameStore = create<GameState>()(
     (set, get) => ({
       ...initialState,
 
-      /** Запуск новой игры */
-      startGame: () =>
-        set({
-          isPlaying: true,
-          isPaused: false,
-          isGameOver: false,
-          lives: 5,
-          score: 0,
-          gameTime: 0,
-          level: 1,
-        }),
+      startGame: () => set({
+        isPlaying: true, isPaused: false, isGameOver: false,
+        lives: 5, score: 0, gameTime: 0, level: 1,
+      }),
 
-      /** Рестарт после Game Over */
-      restartGame: () =>
-        set({
-          isPlaying: true,
-          isPaused: false,
-          isGameOver: false,
-          lives: 5,
-          score: 0,
-          level: 1,
-          gameTime: 0,
-        }),
+      restartGame: () => set({
+        isPlaying: true, isPaused: false, isGameOver: false,
+        lives: 5, score: 0, level: 1, gameTime: 0,
+      }),
 
-      /** Завершение игры */
       gameOver: () => {
-        const state = get();
-        const newHighScore = Math.max(state.score, state.highScore);
-
-        set({
-          isPlaying: false,
-          isPaused: false,
-          isGameOver: true,
-          highScore: newHighScore,
-        });
-
-        if (isBrowser) {
-          localStorage.setItem('rektfrog-highscore', String(newHighScore));
-        }
+        const s = get();
+        const newHigh = Math.max(s.score, s.highScore);
+        set({ isPlaying: false, isPaused: false, isGameOver: true, highScore: newHigh });
+        if (isBrowser) window.localStorage.setItem('rektfrog-highscore', String(newHigh));
       },
 
-      /** Очки */
-      addScore: (points) => set((s) => ({ score: s.score + points })),
+      addScore: (p) => set((s) => ({ score: s.score + p })),
 
-      /** Токены */
       addTokens: (amount) => {
         const newTokens = get().rektTokens + amount;
         set({ rektTokens: newTokens });
-        if (isBrowser) {
-          localStorage.setItem('rektfrog-tokens', String(newTokens));
-        }
+        if (isBrowser) window.localStorage.setItem('rektfrog-tokens', String(newTokens));
       },
 
-      /** Потеря жизни */
       loseLife: () => {
         const newLives = get().lives - 1;
-        if (newLives <= 0) {
-          get().gameOver();
-        } else {
-          set({ lives: newLives });
-        }
+        if (newLives <= 0) get().gameOver();
+        else set({ lives: newLives });
       },
 
-      /** Пауза/резюм */
       pauseGame: () => set({ isPaused: true, isPlaying: false }),
       resumeGame: () => set({ isPaused: false, isPlaying: true }),
       togglePause: () => {
@@ -149,7 +104,6 @@ export const useGameStore = create<GameState>()(
         set({ isPaused: !paused, isPlaying: paused });
       },
 
-      /** Апдейт таймера — вызывать в игровом цикле */
       tick: (deltaMs) => {
         if (!get().isPlaying) return;
         set((s) => ({ gameTime: s.gameTime + deltaMs }));
@@ -157,12 +111,32 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'rekt-frog-storage',
-      skipHydration: true, // избегаем SSR-гидрации стора
-      // Храним в персисте только то, что реально нужно между сессиями
-      partialize: (state) => ({
-        highScore: state.highScore,
-        rektTokens: state.rektTokens,
-      }),
-    }
+      skipHydration: true,
+      partialize: (s) => ({ highScore: s.highScore, rektTokens: s.rektTokens }),
+    },
   )
 );
+
+/** Узкие селекторы — меньше лишних ререндеров */
+export const useIsPlaying = () => useGameStore(s => s.isPlaying);
+export const useIsPaused  = () => useGameStore(s => s.isPaused);
+export const useScore     = () => useGameStore(s => s.score);
+export const useHighScore = () => useGameStore(s => s.highScore);
+export const useTokens    = () => useGameStore(s => s.rektTokens);
+export const useLives     = () => useGameStore(s => s.lives);
+export const useLevel     = () => useGameStore(s => s.level);
+export const useGameTime  = () => useGameStore(s => s.gameTime);
+export const useCharacter = () => useGameStore(s => s.character);
+
+export const useActions = () => useGameStore(s => ({
+  startGame: s.startGame,
+  restartGame: s.restartGame,
+  gameOver: s.gameOver,
+  addScore: s.addScore,
+  addTokens: s.addTokens,
+  loseLife: s.loseLife,
+  pauseGame: s.pauseGame,
+  resumeGame: s.resumeGame,
+  togglePause: s.togglePause,
+  tick: s.tick,
+}));
