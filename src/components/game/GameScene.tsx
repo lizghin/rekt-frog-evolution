@@ -55,15 +55,22 @@ function Loader() {
 function GameWorld() {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
 
-  const { /*character, enemies, coins, powerUps,*/ isPlaying } = useGameStore();
+  const { /*character, enemies, coins, powerUps,*/ isPlaying, graphicsQuality } = useGameStore();
 
   // СВЕТ — читаем из констант
-  const ambient = GRAPHICS.lights.ambient;
-  const dir = GRAPHICS.lights.directional;
+  const keyLight = GRAPHICS.lights.key;
+  const fillLight = GRAPHICS.lights.fill;
+  const rimLight = GRAPHICS.lights.rim;
+
+  // Quality-based lighting intensities
+  const qualityMultiplier = graphicsQuality === 'ultra' ? 1.2 : 
+                           graphicsQuality === 'high' ? 1.0 : 
+                           graphicsQuality === 'medium' ? 0.8 : 0.6;
 
   // Режимы можно подправлять в зависимости от gameplay-состояния
-  const ambientIntensity = isPlaying ? ambient.intensity : ambient.intensity + 0.1;
-  const directionalIntensity = isPlaying ? dir.intensity : dir.intensity * 0.85;
+  const keyIntensity = (isPlaying ? keyLight.intensity : keyLight.intensity * 0.85) * qualityMultiplier;
+  const fillIntensity = (isPlaying ? fillLight.intensity : fillLight.intensity * 0.9) * qualityMultiplier;
+  const rimIntensity = rimLight.intensity * qualityMultiplier;
 
   return (
     <>
@@ -90,19 +97,28 @@ function GameWorld() {
       />
 
       {/* Свет */}
-      <ambientLight intensity={ambientIntensity} color={ambient.color} />
       <directionalLight
-        position={dir.position}
-        intensity={directionalIntensity}
-        color={dir.color}
+        position={keyLight.position}
+        intensity={keyIntensity}
+        color={keyLight.color}
         castShadow
-        shadow-mapSize-width={dir.shadow.mapSize}
-        shadow-mapSize-height={dir.shadow.mapSize}
-        shadow-camera-far={dir.shadow.camera.far}
-        shadow-camera-left={dir.shadow.camera.left}
-        shadow-camera-right={dir.shadow.camera.right}
-        shadow-camera-top={dir.shadow.camera.top}
-        shadow-camera-bottom={dir.shadow.camera.bottom}
+        shadow-mapSize-width={keyLight.shadow.mapSize}
+        shadow-mapSize-height={keyLight.shadow.mapSize}
+        shadow-camera-far={keyLight.shadow.camera.far}
+        shadow-camera-left={keyLight.shadow.camera.left}
+        shadow-camera-right={keyLight.shadow.camera.right}
+        shadow-camera-top={keyLight.shadow.camera.top}
+        shadow-camera-bottom={keyLight.shadow.camera.bottom}
+      />
+      <directionalLight
+        position={fillLight.position}
+        intensity={fillIntensity}
+        color={fillLight.color}
+      />
+      <directionalLight
+        position={rimLight.position}
+        intensity={rimIntensity}
+        color={rimLight.color}
       />
 
       {/* Окружение / HDRI

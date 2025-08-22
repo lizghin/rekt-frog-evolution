@@ -15,11 +15,18 @@ export const GRAPHICS = {
         autoRotate: false,
         autoRotateSpeed: 0.5,
       },
+      // Depth of Field settings
+      dof: {
+        focusDistance: 10,
+        focalLength: 50,
+        bokehScale: 2,
+        height: 480,
+      },
     },
   
     lights: {
-      ambient: { intensity: 0.6, color: '#87CEEB' },
-      directional: {
+      // 3-point lighting setup
+      key: {
         position: [30, 40, 20] as [number, number, number],
         intensity: 1.2,
         color: '#FFD700',
@@ -34,12 +41,29 @@ export const GRAPHICS = {
           },
         },
       },
+      fill: {
+        position: [-20, 20, -10] as [number, number, number],
+        intensity: 0.4,
+        color: '#87CEEB',
+      },
+      rim: {
+        position: [0, 30, -30] as [number, number, number],
+        intensity: 0.6,
+        color: '#FF6B6B',
+      },
+      // God rays light (behind character)
+      godRays: {
+        position: [0, 20, -20] as [number, number, number],
+        intensity: 0.8,
+        color: '#FFD700',
+        volumetric: true,
+      },
     },
   
     postfx: {
       bloom: {
-        intensity: 0.7,
-        luminanceThreshold: 0.7,
+        intensity: 0.8,
+        luminanceThreshold: 0.85,
         luminanceSmoothing: 0.2,
       },
       vignette: {
@@ -50,6 +74,37 @@ export const GRAPHICS = {
       noise: {
         premultiply: true,
         opacity: 0.04,
+      },
+      // Quality-based settings
+      quality: {
+        low: {
+          bloom: { intensity: 0.5, luminanceThreshold: 0.9 },
+          vignette: { offset: 0.1, darkness: 0.6 },
+          smaa: false,
+          dof: false,
+          godRays: false,
+        },
+        medium: {
+          bloom: { intensity: 0.6, luminanceThreshold: 0.8 },
+          vignette: { offset: 0.15, darkness: 0.7 },
+          smaa: true,
+          dof: false,
+          godRays: false,
+        },
+        high: {
+          bloom: { intensity: 0.8, luminanceThreshold: 0.85 },
+          vignette: { offset: 0.2, darkness: 0.8 },
+          smaa: true,
+          dof: true,
+          godRays: true,
+        },
+        ultra: {
+          bloom: { intensity: 1.0, luminanceThreshold: 0.8 },
+          vignette: { offset: 0.25, darkness: 0.9 },
+          smaa: true,
+          dof: true,
+          godRays: true,
+        },
       },
     },
   

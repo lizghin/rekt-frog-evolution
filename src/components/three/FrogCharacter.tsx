@@ -58,7 +58,7 @@ export function FrogCharacter({ position = [0, 1, 0] }: FrogCharacterProps) {
   }, []);
 
   // Физика и анимация
-  useFrame((state, delta) => {
+  useFrame((state) => {
     if (!groupRef.current) return;
 
     // Гравитация

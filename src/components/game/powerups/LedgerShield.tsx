@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { PowerUp, PowerUpType } from '@/types/game';
-import { useGameStore } from '@/store/gameStore';
+// import { useGameStore } from '@/store/gameStore'; // TODO: Implement when game logic is ready
 import { POWERUP_CONFIGS } from '@/lib/constants/powerups';
 
 interface LedgerShieldProps {

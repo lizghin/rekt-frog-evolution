@@ -11,7 +11,7 @@ interface CoinProps {
   id: string;
 }
 
-export function Coin({ position, id }: CoinProps) {
+export function Coin({ position }: CoinProps) {
   const meshRef = useRef<THREE.Group>(null);
   const [collected, setCollected] = useState(false);
   const [hovered, setHovered] = useState(false);

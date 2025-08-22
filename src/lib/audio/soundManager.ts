@@ -24,7 +24,7 @@ class AudioManager implements SoundManager {
     }
   }
 
-  private async loadSound(frequency: number, duration: number, _type: OscillatorType = 'sine'): Promise<AudioBuffer> {
+  private async loadSound(frequency: number, duration: number, type: OscillatorType = 'sine'): Promise<AudioBuffer> {
     if (!this.audioContext) throw new Error('Audio context not initialized');
 
     const sampleRate = this.audioContext.sampleRate;
