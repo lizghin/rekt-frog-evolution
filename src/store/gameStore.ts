@@ -22,6 +22,13 @@ interface GameState {
   level: number;
   gameTime: number;
   character: Character;
+  
+  // Graphics settings
+  graphicsQuality: 'low' | 'medium' | 'high' | 'ultra';
+  
+  // Camera settings for DoF
+  focusDistance: number;
+  focalLength: number;
 
   startGame: () => void;
   restartGame: () => void;
@@ -36,6 +43,11 @@ interface GameState {
   togglePause: () => void;
 
   tick: (deltaMs: number) => void;
+  
+  // Graphics controls
+  setGraphicsQuality: (quality: 'low' | 'medium' | 'high' | 'ultra') => void;
+  setFocusDistance: (distance: number) => void;
+  setFocalLength: (length: number) => void;
 }
 
 const initialState: Omit<GameState,
@@ -43,6 +55,7 @@ const initialState: Omit<GameState,
   | 'addScore' | 'addTokens' | 'loseLife'
   | 'pauseGame' | 'resumeGame' | 'togglePause'
   | 'tick'
+  | 'setGraphicsQuality' | 'setFocusDistance' | 'setFocalLength'
 > = {
   isPlaying: false,
   isPaused: false,
@@ -59,6 +72,9 @@ const initialState: Omit<GameState,
     emoji: '🐸',
     abilities: ['Jump', 'Survive'],
   },
+  graphicsQuality: 'high' as const,
+  focusDistance: 10,
+  focalLength: 50,
 };
 
 export const useGameStore = create<GameState>()(
@@ -108,6 +124,10 @@ export const useGameStore = create<GameState>()(
         if (!get().isPlaying) return;
         set((s) => ({ gameTime: s.gameTime + deltaMs }));
       },
+
+      setGraphicsQuality: (quality) => set({ graphicsQuality: quality }),
+      setFocusDistance: (distance) => set({ focusDistance: distance }),
+      setFocalLength: (length) => set({ focalLength: length }),
     }),
     {
       name: 'rekt-frog-storage',
@@ -127,6 +147,9 @@ export const useLives     = () => useGameStore(s => s.lives);
 export const useLevel     = () => useGameStore(s => s.level);
 export const useGameTime  = () => useGameStore(s => s.gameTime);
 export const useCharacter = () => useGameStore(s => s.character);
+export const useGraphicsQuality = () => useGameStore(s => s.graphicsQuality);
+export const useFocusDistance = () => useGameStore(s => s.focusDistance);
+export const useFocalLength = () => useGameStore(s => s.focalLength);
 
 export const useActions = () => useGameStore(s => ({
   startGame: s.startGame,
@@ -139,4 +162,7 @@ export const useActions = () => useGameStore(s => ({
   resumeGame: s.resumeGame,
   togglePause: s.togglePause,
   tick: s.tick,
+  setGraphicsQuality: s.setGraphicsQuality,
+  setFocusDistance: s.setFocusDistance,
+  setFocalLength: s.setFocalLength,
 }));
