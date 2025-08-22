@@ -55,15 +55,22 @@ function Loader() {
 function GameWorld() {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
 
-  const { /*character, enemies, coins, powerUps,*/ isPlaying } = useGameStore();
+  const { /*character, enemies, coins, powerUps,*/ isPlaying, graphicsQuality } = useGameStore();
 
   // СВЕТ — читаем из констант
   const keyLight = GRAPHICS.lights.key;
   const fillLight = GRAPHICS.lights.fill;
+  const rimLight = GRAPHICS.lights.rim;
+
+  // Quality-based lighting intensities
+  const qualityMultiplier = graphicsQuality === 'ultra' ? 1.2 : 
+                           graphicsQuality === 'high' ? 1.0 : 
+                           graphicsQuality === 'medium' ? 0.8 : 0.6;
 
   // Режимы можно подправлять в зависимости от gameplay-состояния
-  const keyIntensity = isPlaying ? keyLight.intensity : keyLight.intensity * 0.85;
-  const fillIntensity = isPlaying ? fillLight.intensity : fillLight.intensity * 0.9;
+  const keyIntensity = (isPlaying ? keyLight.intensity : keyLight.intensity * 0.85) * qualityMultiplier;
+  const fillIntensity = (isPlaying ? fillLight.intensity : fillLight.intensity * 0.9) * qualityMultiplier;
+  const rimIntensity = rimLight.intensity * qualityMultiplier;
 
   return (
     <>
@@ -107,6 +114,11 @@ function GameWorld() {
         position={fillLight.position}
         intensity={fillIntensity}
         color={fillLight.color}
+      />
+      <directionalLight
+        position={rimLight.position}
+        intensity={rimIntensity}
+        color={rimLight.color}
       />
 
       {/* Окружение / HDRI

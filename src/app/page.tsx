@@ -6,11 +6,13 @@ import { CinematicGameScene } from '@/components/game/CinematicGameScene';
 import { GameHUD } from '@/components/ui/GameHUD';
 import { WalletConnector } from '@/components/ui/WalletConnector';
 import { Shop } from '@/components/ui/Shop';
+import { GraphicsPanel } from '@/components/ui/GraphicsPanel';
 import { useGameStore } from '@/store/gameStore';
 
 export default function HomePage() {
   const [showShop, setShowShop] = useState(false);
   const [showMenu, setShowMenu] = useState(true);
+  const [showGraphicsPanel, setShowGraphicsPanel] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
 
   const {
@@ -64,11 +66,13 @@ export default function HomePage() {
         if (walletConnected) {
           setShowShop(!showShop);
         }
+      } else if (e.key === 'g' || e.key === 'G') {
+        setShowGraphicsPanel(!showGraphicsPanel);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isPlaying, isPaused, pauseGame, resumeGame, startGame, walletConnected, showShop]);
+  }, [isPlaying, isPaused, pauseGame, resumeGame, startGame, walletConnected, showShop, showGraphicsPanel]);
 
   const handleStartGame = () => {
     startGame();
@@ -279,6 +283,12 @@ export default function HomePage() {
 
       {/* Магазин */}
       <Shop isOpen={showShop} onClose={() => setShowShop(false)} />
+
+      {/* Graphics Panel */}
+      <GraphicsPanel 
+        isOpen={showGraphicsPanel} 
+        onToggle={() => setShowGraphicsPanel(!showGraphicsPanel)} 
+      />
 
       {/* Лоадер спавна персонажа */}
       {isPlaying && !character && (

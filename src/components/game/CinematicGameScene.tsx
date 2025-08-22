@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useRef, useMemo, Fragment } from 'react';
+import { Suspense, useRef, Fragment } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import {
   OrbitControls,
@@ -12,7 +12,6 @@ import {
   Html,
   useProgress,
   ContactShadows,
-  useGLTF,
 } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -24,7 +23,6 @@ import {
   Noise, 
   SMAA,
   DepthOfField,
-  GodRays,
   BrightnessContrast,
   HueSaturation,
 } from '@react-three/postprocessing';
@@ -33,9 +31,10 @@ import {
 import { FrogCharacter } from '@/components/three/FrogCharacter';
 import { Coin } from '@/components/three/Coin';
 import { GameLoop } from '@/components/game/GameLoop';
+import { FPSMonitor } from '@/components/ui/FPSMonitor';
 
 // Game State
-import { useGameStore } from '@/store/gameStore';
+import { useGameStore, QUALITY_PRESETS } from '@/store/gameStore';
 
 // Graphics constants
 import { GRAPHICS } from '@/lib/constants/graphics';
@@ -58,31 +57,7 @@ function Loader() {
   );
 }
 
-// FPS monitoring component
-function FPSMonitor() {
-  const fpsRef = useRef(0);
-  const frameCountRef = useRef(0);
-  const lastTimeRef = useRef(0);
-  
-  useFrame((state) => {
-    frameCountRef.current++;
-    const currentTime = state.clock.elapsedTime;
-    
-    if (currentTime - lastTimeRef.current >= 1) {
-      fpsRef.current = frameCountRef.current;
-      frameCountRef.current = 0;
-      lastTimeRef.current = currentTime;
-    }
-  });
 
-  return (
-    <Html position={[10, 10, 0]}>
-      <div className="text-white text-sm bg-black/50 px-2 py-1 rounded">
-        FPS: {fpsRef.current}
-      </div>
-    </Html>
-  );
-}
 
 function GameWorld() {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
@@ -91,13 +66,13 @@ function GameWorld() {
 
   const { 
     isPlaying, 
-    graphicsQuality, 
-    focusDistance, 
-    focalLength 
+    graphicsQuality,
+    focusDistance,
+    focalLength
   } = useGameStore();
 
   // Get quality-based settings
-  const qualitySettings = GRAPHICS.postfx.quality[graphicsQuality];
+  const qualityPreset = QUALITY_PRESETS[graphicsQuality];
 
   // 3-point lighting setup
   const keyLight = GRAPHICS.lights.key;
@@ -164,7 +139,7 @@ function GameWorld() {
       />
 
       {/* God Rays Light (behind character) */}
-      {qualitySettings.godRays && (
+      {qualityPreset.dof && (
         <directionalLight
           position={godRaysLight.position}
           intensity={godRaysLight.intensity}
@@ -173,7 +148,7 @@ function GameWorld() {
       )}
 
       {/* Sun mesh for GodRays effect */}
-      {qualitySettings.godRays && (
+      {qualityPreset.dof && (
         <mesh ref={sunRef} position={godRaysLight.position} visible={false}>
           <sphereGeometry args={[0.5, 16, 16]} />
           <meshBasicMaterial color={godRaysLight.color} />
@@ -211,15 +186,17 @@ function GameWorld() {
       </mesh>
 
       {/* Contact Shadows under character */}
-      <ContactShadows
-        position={[0, 0.01, 0]}
-        opacity={0.4}
-        scale={10}
-        blur={1}
-        far={10}
-        resolution={256}
-        color="#000000"
-      />
+      {qualityPreset.contactShadows && (
+        <ContactShadows
+          position={[0, 0.01, 0]}
+          opacity={0.4}
+          scale={10}
+          blur={1}
+          far={10}
+          resolution={256}
+          color="#000000"
+        />
+      )}
 
       {/* Grid for reference */}
       <Grid
@@ -265,13 +242,10 @@ export function CinematicGameScene({ className = '' }: CinematicGameSceneProps) 
   const { graphicsQuality, focusDistance, focalLength } = useGameStore();
 
   // Quality-based renderer settings
-  const quality = graphicsQuality;
-  const dpr = GRAPHICS.renderer.dprByQuality[quality];
-  const shadows = GRAPHICS.renderer.shadows[quality];
-  const antialias = quality === 'high' || quality === 'ultra';
-
-  // Get quality-based postprocessing settings
-  const qualitySettings = GRAPHICS.postfx.quality[quality];
+  const qualityPreset = QUALITY_PRESETS[graphicsQuality];
+  const dpr = qualityPreset.dpr;
+  const shadows = qualityPreset.shadows;
+  const antialias = graphicsQuality === 'high' || graphicsQuality === 'ultra';
 
   return (
     <div className={`w-full h-full ${className}`}>
@@ -283,7 +257,7 @@ export function CinematicGameScene({ className = '' }: CinematicGameSceneProps) 
           alpha: false,
           stencil: false,
           depth: true,
-          powerPreference: quality === 'low' ? 'low-power' : 'high-performance',
+          powerPreference: graphicsQuality === 'low' ? 'low-power' : 'high-performance',
           preserveDrawingBuffer: false,
         }}
         camera={{ 
@@ -298,14 +272,14 @@ export function CinematicGameScene({ className = '' }: CinematicGameSceneProps) 
           {/* Enhanced Postprocessing Pipeline */}
           <EffectComposer>
             <Bloom
-              intensity={qualitySettings.bloom.intensity}
-              luminanceThreshold={qualitySettings.bloom.luminanceThreshold}
+              intensity={qualityPreset.bloomIntensity}
+              luminanceThreshold={0.85}
               luminanceSmoothing={0.2}
             />
             <Vignette
               eskil={false}
-              offset={qualitySettings.vignette.offset}
-              darkness={qualitySettings.vignette.darkness}
+              offset={0.2}
+              darkness={qualityPreset.vignetteDarkness}
             />
             <Noise
               premultiply={true}
@@ -313,8 +287,8 @@ export function CinematicGameScene({ className = '' }: CinematicGameSceneProps) 
             />
             <BrightnessContrast brightness={0.05} contrast={0.1} />
             <HueSaturation hue={0} saturation={0.1} />
-            {qualitySettings.smaa ? <SMAA /> : <Fragment />}
-            {qualitySettings.dof ? (
+            {qualityPreset.smaa ? <SMAA /> : <Fragment />}
+            {qualityPreset.dof ? (
               <DepthOfField
                 focusDistance={focusDistance}
                 focalLength={focalLength}

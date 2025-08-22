@@ -151,6 +151,46 @@ export const useGraphicsQuality = () => useGameStore(s => s.graphicsQuality);
 export const useFocusDistance = () => useGameStore(s => s.focusDistance);
 export const useFocalLength = () => useGameStore(s => s.focalLength);
 
+// Quality presets for performance optimization
+export const QUALITY_PRESETS = {
+  low: {
+    dpr: 1,
+    shadows: false,
+    smaa: false,
+    dof: false,
+    contactShadows: false,
+    bloomIntensity: 0.5,
+    vignetteDarkness: 0.6,
+  },
+  medium: {
+    dpr: 1.5,
+    shadows: true,
+    smaa: true,
+    dof: false,
+    contactShadows: true,
+    bloomIntensity: 0.6,
+    vignetteDarkness: 0.7,
+  },
+  high: {
+    dpr: 2,
+    shadows: true,
+    smaa: true,
+    dof: true,
+    contactShadows: true,
+    bloomIntensity: 0.8,
+    vignetteDarkness: 0.8,
+  },
+  ultra: {
+    dpr: 2,
+    shadows: true,
+    smaa: true,
+    dof: true,
+    contactShadows: true,
+    bloomIntensity: 1.0,
+    vignetteDarkness: 0.9,
+  },
+} as const;
+
 export const useActions = () => useGameStore(s => ({
   startGame: s.startGame,
   restartGame: s.restartGame,
