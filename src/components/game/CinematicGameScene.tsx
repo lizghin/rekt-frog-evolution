@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Suspense, useRef, useMemo, Fragment } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import {
   OrbitControls,
   Environment,
@@ -11,27 +11,33 @@ import {
   PerspectiveCamera,
   Html,
   useProgress,
+  ContactShadows,
+  useGLTF,
 } from '@react-three/drei';
 import * as THREE from 'three';
 
-// NEW: постобработка
-import { EffectComposer, Bloom, Vignette, Noise } from '@react-three/postprocessing';
+// Enhanced postprocessing
+import { 
+  EffectComposer, 
+  Bloom, 
+  Vignette, 
+  Noise, 
+  SMAA,
+  DepthOfField,
+  GodRays,
+  BrightnessContrast,
+  HueSaturation,
+} from '@react-three/postprocessing';
 
 // Game Components
 import { FrogCharacter } from '@/components/three/FrogCharacter';
 import { Coin } from '@/components/three/Coin';
 import { GameLoop } from '@/components/game/GameLoop';
-// Если есть враги/пауэрапы — вернёшь позже
-// import { RugPull } from '@/components/game/enemies/RugPull';
-// import { BearBot } from '@/components/game/enemies/BearBot';
-// import { UnrektBomb } from '@/components/game/powerups/UnrektBomb';
-// import { LedgerShield } from '@/components/game/powerups/LedgerShield';
 
 // Game State
 import { useGameStore } from '@/store/gameStore';
-// import { EnemyType, PowerUpType } from '@/types/game';
 
-// NEW: наши графические константы
+// Graphics constants
 import { GRAPHICS } from '@/lib/constants/graphics';
 
 function Loader() {
@@ -52,22 +58,60 @@ function Loader() {
   );
 }
 
+// FPS monitoring component
+function FPSMonitor() {
+  const fpsRef = useRef(0);
+  const frameCountRef = useRef(0);
+  const lastTimeRef = useRef(0);
+  
+  useFrame((state) => {
+    frameCountRef.current++;
+    const currentTime = state.clock.elapsedTime;
+    
+    if (currentTime - lastTimeRef.current >= 1) {
+      fpsRef.current = frameCountRef.current;
+      frameCountRef.current = 0;
+      lastTimeRef.current = currentTime;
+    }
+  });
+
+  return (
+    <Html position={[10, 10, 0]}>
+      <div className="text-white text-sm bg-black/50 px-2 py-1 rounded">
+        FPS: {fpsRef.current}
+      </div>
+    </Html>
+  );
+}
+
 function GameWorld() {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
+  const characterRef = useRef<THREE.Group>(null);
+  const sunRef = useRef<THREE.Mesh>(null);
 
-  const { /*character, enemies, coins, powerUps,*/ isPlaying } = useGameStore();
+  const { 
+    isPlaying, 
+    graphicsQuality, 
+    focusDistance, 
+    focalLength 
+  } = useGameStore();
 
-  // СВЕТ — читаем из констант
+  // Get quality-based settings
+  const qualitySettings = GRAPHICS.postfx.quality[graphicsQuality];
+
+  // 3-point lighting setup
   const keyLight = GRAPHICS.lights.key;
   const fillLight = GRAPHICS.lights.fill;
+  const rimLight = GRAPHICS.lights.rim;
+  const godRaysLight = GRAPHICS.lights.godRays;
 
-  // Режимы можно подправлять в зависимости от gameplay-состояния
+  // Dynamic lighting based on game state
   const keyIntensity = isPlaying ? keyLight.intensity : keyLight.intensity * 0.85;
   const fillIntensity = isPlaying ? fillLight.intensity : fillLight.intensity * 0.9;
 
   return (
     <>
-      {/* Камера */}
+      {/* Camera with DoF */}
       <PerspectiveCamera
         ref={cameraRef}
         makeDefault
@@ -77,7 +121,7 @@ function GameWorld() {
         far={GRAPHICS.camera.far}
       />
 
-      {/* Управление камерой */}
+      {/* Camera controls */}
       <OrbitControls
         enablePan={GRAPHICS.camera.orbit.enablePan}
         enableZoom={GRAPHICS.camera.orbit.enableZoom}
@@ -89,7 +133,8 @@ function GameWorld() {
         autoRotateSpeed={GRAPHICS.camera.orbit.autoRotateSpeed}
       />
 
-      {/* Свет */}
+      {/* 3-Point Lighting Setup */}
+      {/* Key Light */}
       <directionalLight
         position={keyLight.position}
         intensity={keyIntensity}
@@ -103,15 +148,39 @@ function GameWorld() {
         shadow-camera-top={keyLight.shadow.camera.top}
         shadow-camera-bottom={keyLight.shadow.camera.bottom}
       />
+
+      {/* Fill Light */}
       <directionalLight
         position={fillLight.position}
         intensity={fillIntensity}
         color={fillLight.color}
       />
 
-      {/* Окружение / HDRI
-         Позже можно заменить на файл из /public/hdr/*.hdr через <Environment files="/hdr/xxx.hdr" />
-      */}
+      {/* Rim Light */}
+      <directionalLight
+        position={rimLight.position}
+        intensity={rimLight.intensity}
+        color={rimLight.color}
+      />
+
+      {/* God Rays Light (behind character) */}
+      {qualitySettings.godRays && (
+        <directionalLight
+          position={godRaysLight.position}
+          intensity={godRaysLight.intensity}
+          color={godRaysLight.color}
+        />
+      )}
+
+      {/* Sun mesh for GodRays effect */}
+      {qualitySettings.godRays && (
+        <mesh ref={sunRef} position={godRaysLight.position} visible={false}>
+          <sphereGeometry args={[0.5, 16, 16]} />
+          <meshBasicMaterial color={godRaysLight.color} />
+        </mesh>
+      )}
+
+      {/* Environment */}
       <Environment preset="city" background blur={0.6} />
       <Sky
         distance={450000}
@@ -127,7 +196,7 @@ function GameWorld() {
       {/* Fog for depth */}
       <fog attach="fog" args={[GRAPHICS.fog.color, GRAPHICS.fog.near, GRAPHICS.fog.far]} />
 
-      {/* Земля */}
+      {/* Ground with contact shadows */}
       <mesh
         receiveShadow
         position={[0, 0, 0]}
@@ -141,9 +210,20 @@ function GameWorld() {
         />
       </mesh>
 
-      {/* Сетка для ориентира (можно скрыть позже) */}
-      <Grid
+      {/* Contact Shadows under character */}
+      <ContactShadows
         position={[0, 0.01, 0]}
+        opacity={0.4}
+        scale={10}
+        blur={1}
+        far={10}
+        resolution={256}
+        color="#000000"
+      />
+
+      {/* Grid for reference */}
+      <Grid
+        position={[0, 0.02, 0]}
         args={[GRAPHICS.ground.size.width, GRAPHICS.ground.size.depth]}
         cellSize={5}
         cellThickness={0.5}
@@ -155,16 +235,21 @@ function GameWorld() {
         fadeStrength={1}
       />
 
-      {/* Главный персонаж */}
-      <FrogCharacter />
+      {/* Character with ref for DoF */}
+      <group ref={characterRef}>
+        <FrogCharacter />
+      </group>
 
-      {/* Пример монет (если у тебя есть генерация — оставь её) */}
+      {/* Example coins */}
       <Coin id="c1" position={[3, 2, 1]} />
       <Coin id="c2" position={[-2, 3, -1]} />
       <Coin id="c3" position={[6, 1.5, 4]} />
 
-      {/* Производительность (оставим для high/ultra) */}
-      {false && <Stats />}
+      {/* FPS Monitor */}
+      <FPSMonitor />
+
+      {/* Performance stats for ultra quality */}
+      {graphicsQuality === 'ultra' && <Stats />}
 
       {/* Game Loop */}
       <GameLoop />
@@ -172,17 +257,21 @@ function GameWorld() {
   );
 }
 
-interface GameSceneProps {
+interface CinematicGameSceneProps {
   className?: string;
 }
 
-export function GameScene({ className = '' }: GameSceneProps) {
+export function CinematicGameScene({ className = '' }: CinematicGameSceneProps) {
+  const { graphicsQuality, focusDistance, focalLength } = useGameStore();
 
-  // DPR и тени из конфига
-  const quality = 'high' as 'low' | 'medium' | 'high' | 'ultra';
+  // Quality-based renderer settings
+  const quality = graphicsQuality;
   const dpr = GRAPHICS.renderer.dprByQuality[quality];
   const shadows = GRAPHICS.renderer.shadows[quality];
   const antialias = quality === 'high' || quality === 'ultra';
+
+  // Get quality-based postprocessing settings
+  const qualitySettings = GRAPHICS.postfx.quality[quality];
 
   return (
     <div className={`w-full h-full ${className}`}>
@@ -197,27 +286,44 @@ export function GameScene({ className = '' }: GameSceneProps) {
           powerPreference: quality === 'low' ? 'low-power' : 'high-performance',
           preserveDrawingBuffer: false,
         }}
-        camera={{ fov: GRAPHICS.camera.fov, near: GRAPHICS.camera.near, far: GRAPHICS.camera.far }}
+        camera={{ 
+          fov: GRAPHICS.camera.fov, 
+          near: GRAPHICS.camera.near, 
+          far: GRAPHICS.camera.far 
+        }}
       >
         <Suspense fallback={<Loader />}>
           <GameWorld />
 
-          {/* Пост-обработка */}
+          {/* Enhanced Postprocessing Pipeline */}
           <EffectComposer>
             <Bloom
-              intensity={GRAPHICS.postfx.bloom.intensity}
-              luminanceThreshold={GRAPHICS.postfx.bloom.luminanceThreshold}
-              luminanceSmoothing={GRAPHICS.postfx.bloom.luminanceSmoothing}
+              intensity={qualitySettings.bloom.intensity}
+              luminanceThreshold={qualitySettings.bloom.luminanceThreshold}
+              luminanceSmoothing={0.2}
             />
             <Vignette
-              eskil={GRAPHICS.postfx.vignette.eskil}
-              offset={GRAPHICS.postfx.vignette.offset}
-              darkness={GRAPHICS.postfx.vignette.darkness}
+              eskil={false}
+              offset={qualitySettings.vignette.offset}
+              darkness={qualitySettings.vignette.darkness}
             />
             <Noise
-              premultiply={GRAPHICS.postfx.noise.premultiply}
-              opacity={GRAPHICS.postfx.noise.opacity}
+              premultiply={true}
+              opacity={0.02}
             />
+            <BrightnessContrast brightness={0.05} contrast={0.1} />
+            <HueSaturation hue={0} saturation={0.1} />
+            {qualitySettings.smaa ? <SMAA /> : <Fragment />}
+            {qualitySettings.dof ? (
+              <DepthOfField
+                focusDistance={focusDistance}
+                focalLength={focalLength}
+                bokehScale={GRAPHICS.camera.dof.bokehScale}
+                height={GRAPHICS.camera.dof.height}
+              />
+            ) : (
+              <Fragment />
+            )}
           </EffectComposer>
         </Suspense>
       </Canvas>

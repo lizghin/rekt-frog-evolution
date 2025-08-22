@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { GameScene } from '@/components/game/GameScene';
+import { CinematicGameScene } from '@/components/game/CinematicGameScene';
 import { GameHUD } from '@/components/ui/GameHUD';
 import { WalletConnector } from '@/components/ui/WalletConnector';
 import { Shop } from '@/components/ui/Shop';
@@ -20,10 +20,16 @@ export default function HomePage() {
     score,
     highScore,
     rektTokens,
+    graphicsQuality,
+    focusDistance,
+    focalLength,
     startGame,
     restartGame,
     pauseGame,
     resumeGame,
+    setGraphicsQuality,
+    setFocusDistance,
+    setFocalLength,
     character,
   } = useGameStore();
 
@@ -79,7 +85,7 @@ export default function HomePage() {
   return (
     <div className="relative w-screen h-screen bg-black overflow-hidden">
       {/* 3D сцена */}
-      <GameScene className="absolute inset-0" />
+      <CinematicGameScene className="absolute inset-0" />
 
       {/* HUD — показываем в игре (и на паузе тоже полезно видеть статы) */}
       {isPlaying && <GameHUD />}
@@ -206,6 +212,51 @@ export default function HomePage() {
                     <li>• Compete in leaderboards</li>
                     <li>• Trade achievements as NFTs</li>
                   </ul>
+                </div>
+
+                {/* Graphics Settings */}
+                <div className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 
+                                border border-purple-500/50 rounded-lg p-4">
+                  <h3 className="text-purple-400 font-bold mb-2">🎮 Graphics Settings</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-gray-300 text-sm block mb-1">Quality:</label>
+                      <select
+                        value={graphicsQuality}
+                        onChange={(e) => setGraphicsQuality(e.target.value as any)}
+                        className="w-full bg-black/50 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="ultra">Ultra</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm block mb-1">Focus Distance: {focusDistance}</label>
+                      <input
+                        type="range"
+                        min="1"
+                        max="20"
+                        step="0.5"
+                        value={focusDistance}
+                        onChange={(e) => setFocusDistance(parseFloat(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm block mb-1">Focal Length: {focalLength}</label>
+                      <input
+                        type="range"
+                        min="20"
+                        max="100"
+                        step="5"
+                        value={focalLength}
+                        onChange={(e) => setFocalLength(parseFloat(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
