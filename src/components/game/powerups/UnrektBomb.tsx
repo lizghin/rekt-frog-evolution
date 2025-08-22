@@ -1,11 +1,11 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { PowerUp, PowerUpType } from '@/types/game';
-import { useGameStore } from '@/store/gameStore';
-import { POWERUP_CONFIGS } from '@/lib/constants/powerups';
+import { PowerUp } from '@/types/game';
+// import { useGameStore } from '@/store/gameStore'; // TODO: Implement when game logic is ready
+// import { POWERUP_CONFIGS } from '@/lib/constants/powerups'; // TODO: Use when powerup logic is implemented
 
 interface UnrektBombProps {
   powerUp: PowerUp;
@@ -23,8 +23,8 @@ export function UnrektBomb({ powerUp }: UnrektBombProps) {
   const character = { position: { x: 0, y: 0, z: 0 } };
   const collectPowerUp = () => {};
   const clearAllEnemies = () => {};
-  const addScore = () => {};
-  const config = POWERUP_CONFIGS[PowerUpType.UNREKT_BOMB];
+  // const addScore = () => {}; // TODO: Use when scoring logic is implemented
+  // const config = POWERUP_CONFIGS[PowerUpType.UNREKT_BOMB]; // TODO: Use when powerup logic is implemented
 
   // Check for collection
   useFrame((state, delta) => {

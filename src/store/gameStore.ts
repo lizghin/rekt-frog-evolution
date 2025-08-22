@@ -22,6 +22,13 @@ interface GameState {
   level: number;
   gameTime: number;
   character: Character;
+  
+  // Graphics settings
+  graphicsQuality: 'low' | 'medium' | 'high' | 'ultra';
+  
+  // Camera settings for DoF
+  focusDistance: number;
+  focalLength: number;
 
   startGame: () => void;
   restartGame: () => void;
@@ -36,6 +43,15 @@ interface GameState {
   togglePause: () => void;
 
   tick: (deltaMs: number) => void;
+  
+  // Graphics controls
+  setGraphicsQuality: (quality: 'low' | 'medium' | 'high' | 'ultra') => void;
+  setFocusDistance: (distance: number) => void;
+  setFocalLength: (length: number) => void;
+  
+  // Cinematic mode
+  cinematicMode: boolean;
+  setCinematicMode: (enabled: boolean) => void;
 }
 
 const initialState: Omit<GameState,
@@ -43,6 +59,7 @@ const initialState: Omit<GameState,
   | 'addScore' | 'addTokens' | 'loseLife'
   | 'pauseGame' | 'resumeGame' | 'togglePause'
   | 'tick'
+  | 'setGraphicsQuality' | 'setFocusDistance' | 'setFocalLength' | 'setCinematicMode'
 > = {
   isPlaying: false,
   isPaused: false,
@@ -59,6 +76,10 @@ const initialState: Omit<GameState,
     emoji: '🐸',
     abilities: ['Jump', 'Survive'],
   },
+  graphicsQuality: 'high' as const,
+  focusDistance: 10,
+  focalLength: 50,
+  cinematicMode: false,
 };
 
 export const useGameStore = create<GameState>()(
@@ -108,6 +129,11 @@ export const useGameStore = create<GameState>()(
         if (!get().isPlaying) return;
         set((s) => ({ gameTime: s.gameTime + deltaMs }));
       },
+
+      setGraphicsQuality: (quality) => set({ graphicsQuality: quality }),
+      setFocusDistance: (distance) => set({ focusDistance: distance }),
+      setFocalLength: (length) => set({ focalLength: length }),
+      setCinematicMode: (enabled) => set({ cinematicMode: enabled }),
     }),
     {
       name: 'rekt-frog-storage',
@@ -127,6 +153,57 @@ export const useLives     = () => useGameStore(s => s.lives);
 export const useLevel     = () => useGameStore(s => s.level);
 export const useGameTime  = () => useGameStore(s => s.gameTime);
 export const useCharacter = () => useGameStore(s => s.character);
+export const useGraphicsQuality = () => useGameStore(s => s.graphicsQuality);
+export const useFocusDistance = () => useGameStore(s => s.focusDistance);
+export const useFocalLength = () => useGameStore(s => s.focalLength);
+export const useCinematicMode = () => useGameStore(s => s.cinematicMode);
+
+// Memoized heavy selectors to reduce re-renders
+export const useQualityPreset = () => useGameStore(s => QUALITY_PRESETS[s.graphicsQuality]);
+export const useCinematicSettings = () => useGameStore(s => ({ 
+  cinematicMode: s.cinematicMode,
+  quality: s.graphicsQuality 
+}));
+
+// Quality presets for performance optimization
+export const QUALITY_PRESETS = {
+  low: {
+    dpr: 1,
+    shadows: false,
+    smaa: false,
+    dof: false,
+    contactShadows: false,
+    bloomIntensity: 0.5,
+    vignetteDarkness: 0.6,
+  },
+  medium: {
+    dpr: 1.5,
+    shadows: true,
+    smaa: true,
+    dof: false,
+    contactShadows: true,
+    bloomIntensity: 0.6,
+    vignetteDarkness: 0.7,
+  },
+  high: {
+    dpr: 2,
+    shadows: true,
+    smaa: true,
+    dof: true,
+    contactShadows: true,
+    bloomIntensity: 0.8,
+    vignetteDarkness: 0.8,
+  },
+  ultra: {
+    dpr: 2,
+    shadows: true,
+    smaa: true,
+    dof: true,
+    contactShadows: true,
+    bloomIntensity: 1.0,
+    vignetteDarkness: 0.9,
+  },
+} as const;
 
 export const useActions = () => useGameStore(s => ({
   startGame: s.startGame,
@@ -139,4 +216,8 @@ export const useActions = () => useGameStore(s => ({
   resumeGame: s.resumeGame,
   togglePause: s.togglePause,
   tick: s.tick,
+  setGraphicsQuality: s.setGraphicsQuality,
+  setFocusDistance: s.setFocusDistance,
+  setFocalLength: s.setFocalLength,
+  setCinematicMode: s.setCinematicMode,
 }));
