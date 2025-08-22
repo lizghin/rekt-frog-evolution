@@ -15,21 +15,30 @@ interface BearBotProps {
 export function BearBot({ enemy }: BearBotProps) {
   const meshRef = useRef<THREE.Group>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
-  const [aiState, setAiState] = useState(ENEMY_AI_STATES.PATROL);
+  const [aiState, setAiState] = useState<keyof typeof ENEMY_AI_STATES>('PATROL');
   const [lastAttackTime, setLastAttackTime] = useState(0);
   const timeRef = useRef(0);
   const patrolCenter = useRef(new THREE.Vector3(enemy.position.x, enemy.position.y, enemy.position.z));
   const patrolTarget = useRef(new THREE.Vector3());
   const velocityRef = useRef(new THREE.Vector3());
 
-  const { 
-    character, 
-    damageCharacter, 
-    updateEnemyPosition, 
-    updateEnemyVelocity,
-    removeEnemy,
-    addScore 
-  } = useGameStore();
+  // TODO: These functions will be implemented in the next phase
+  // const { 
+  //   character, 
+  //   damageCharacter, 
+  //   updateEnemyPosition, 
+  //   updateEnemyVelocity,
+  //   removeEnemy,
+  //   addScore 
+  // } = useGameStore();
+  
+  // Temporary mock data for now
+  const character = { position: { x: 0, y: 0, z: 0 } };
+  const damageCharacter = () => {};
+  const updateEnemyPosition = () => {};
+  const updateEnemyVelocity = () => {};
+  const removeEnemy = () => {};
+  const addScore = () => {};
 
   const config = ENEMY_CONFIGS[EnemyType.BEAR_BOT];
   const { scene, animations } = useGLTF(config.modelPath);
@@ -47,7 +56,7 @@ export function BearBot({ enemy }: BearBotProps) {
 
     return () => {
       if (mixerRef.current) {
-        mixerRef.current.dispose();
+        // mixerRef.current.dispose(); // AnimationMixer doesn't have dispose method
       }
     };
   }, [scene, animations]);
@@ -93,10 +102,10 @@ export function BearBot({ enemy }: BearBotProps) {
 
     // AI State Machine
     switch (aiState) {
-      case ENEMY_AI_STATES.PATROL:
+      case 'PATROL':
         // Check if player is in aggro range
         if (distanceToPlayer <= config.behavior.aggroRange) {
-          setAiState(ENEMY_AI_STATES.CHASE);
+          setAiState('CHASE');
           playAnimation('run');
           break;
         }
@@ -114,17 +123,17 @@ export function BearBot({ enemy }: BearBotProps) {
         playAnimation('walk');
         break;
 
-      case ENEMY_AI_STATES.CHASE:
+      case 'CHASE':
         // Check if player escaped aggro range
         if (distanceToPlayer > config.behavior.aggroRange * 1.5) {
-          setAiState(ENEMY_AI_STATES.PATROL);
+          setAiState('PATROL');
           playAnimation('walk');
           break;
         }
 
         // Check if close enough to attack
         if (distanceToPlayer <= config.behavior.attackRange) {
-          setAiState(ENEMY_AI_STATES.ATTACK);
+          setAiState('ATTACK');
           playAnimation('attack');
           break;
         }
@@ -144,21 +153,21 @@ export function BearBot({ enemy }: BearBotProps) {
         }
         break;
 
-      case ENEMY_AI_STATES.ATTACK:
+      case 'ATTACK':
         const now = Date.now();
         
         // Check attack cooldown
         if (now - lastAttackTime >= config.behavior.attackCooldown) {
           // Perform attack
           if (distanceToPlayer <= config.behavior.attackRange) {
-            damageCharacter(enemy.damage);
+            damageCharacter();
             setLastAttackTime(now);
             
             // Add screen shake effect
             // This would be handled by the camera controller
           }
           
-          setAiState(ENEMY_AI_STATES.CHASE);
+          setAiState('CHASE');
           playAnimation('run');
         }
         
@@ -166,15 +175,15 @@ export function BearBot({ enemy }: BearBotProps) {
         velocityRef.current.set(0, 0, 0);
         break;
 
-      case ENEMY_AI_STATES.STUNNED:
+      case 'STUNNED':
         // Handle stun state (could be from powerups)
         velocityRef.current.set(0, 0, 0);
         playAnimation('hit');
         
         // Auto-recover after stun duration
         setTimeout(() => {
-          if (aiState === ENEMY_AI_STATES.STUNNED) {
-            setAiState(ENEMY_AI_STATES.CHASE);
+          if (aiState === 'STUNNED') {
+            setAiState('CHASE');
           }
         }, 1000);
         break;
@@ -187,17 +196,8 @@ export function BearBot({ enemy }: BearBotProps) {
     newPosition.y = enemy.position.y;
 
     // Update position in store
-    updateEnemyPosition(enemy.id, {
-      x: newPosition.x,
-      y: newPosition.y,
-      z: newPosition.z
-    });
-
-    updateEnemyVelocity(enemy.id, {
-      x: velocityRef.current.x,
-      y: velocityRef.current.y,
-      z: velocityRef.current.z
-    });
+    updateEnemyPosition();
+    updateEnemyVelocity();
 
     // Update mesh position
     if (meshRef.current) {
@@ -209,12 +209,12 @@ export function BearBot({ enemy }: BearBotProps) {
   useEffect(() => {
     if (enemy.health <= 0) {
       playAnimation('death');
-      setAiState(ENEMY_AI_STATES.DEAD);
+      setAiState('DEAD');
       
       // Remove after death animation
       setTimeout(() => {
-        removeEnemy(enemy.id);
-        addScore(config.scoreValue);
+        removeEnemy();
+        addScore();
       }, 1000);
     }
   }, [enemy.health]);
@@ -288,7 +288,7 @@ export function BearBot({ enemy }: BearBotProps) {
       </mesh>
 
       {/* Aggro range indicator (debug - only visible when chasing) */}
-      {aiState === ENEMY_AI_STATES.CHASE && (
+      {aiState === 'CHASE' && (
         <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[config.behavior.aggroRange - 0.5, config.behavior.aggroRange, 16]} />
           <meshBasicMaterial
@@ -301,7 +301,7 @@ export function BearBot({ enemy }: BearBotProps) {
       )}
 
       {/* Attack range indicator when attacking */}
-      {aiState === ENEMY_AI_STATES.ATTACK && (
+      {aiState === 'ATTACK' && (
         <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[config.behavior.attackRange - 0.2, config.behavior.attackRange, 16]} />
           <meshBasicMaterial
@@ -314,7 +314,7 @@ export function BearBot({ enemy }: BearBotProps) {
       )}
 
       {/* FUD spreading particle effect */}
-      {aiState === ENEMY_AI_STATES.CHASE && (
+      {aiState === 'CHASE' && (
         <group>
           {[...Array(6)].map((_, i) => (
             <mesh
@@ -349,15 +349,17 @@ export function BearBot({ enemy }: BearBotProps) {
       </group>
 
       {/* Directional light for dramatic effect */}
-      <spotLight
-        color="#FF4444"
-        intensity={0.5}
-        distance={8}
-        angle={Math.PI / 6}
-        penumbra={0.5}
-        position={[0, 3, 0]}
-        target={meshRef.current}
-      />
+      {meshRef.current && (
+        <spotLight
+          color="#FF4444"
+          intensity={0.5}
+          distance={8}
+          angle={Math.PI / 6}
+          penumbra={0.5}
+          position={[0, 3, 0]}
+          target={meshRef.current}
+        />
+      )}
     </group>
   );
 }

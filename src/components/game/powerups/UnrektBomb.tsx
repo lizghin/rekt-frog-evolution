@@ -16,7 +16,14 @@ export function UnrektBomb({ powerUp }: UnrektBombProps) {
   const timeRef = useRef(0);
   const pulseRef = useRef(0);
   
-  const { collectPowerUp, character, clearAllEnemies, addScore } = useGameStore();
+  // TODO: These functions will be implemented in the next phase
+  // const { collectPowerUp, character, clearAllEnemies, addScore } = useGameStore();
+  
+  // Temporary mock data for now
+  const character = { position: { x: 0, y: 0, z: 0 } };
+  const collectPowerUp = () => {};
+  const clearAllEnemies = () => {};
+  const addScore = () => {};
   const config = POWERUP_CONFIGS[PowerUpType.UNREKT_BOMB];
 
   // Check for collection
@@ -75,7 +82,7 @@ export function UnrektBomb({ powerUp }: UnrektBombProps) {
     clearAllEnemies();
     
     // Collect the powerup
-    collectPowerUp(powerUp.id);
+    collectPowerUp();
   };
 
   const createExplosionEffect = () => {
