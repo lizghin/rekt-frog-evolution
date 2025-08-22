@@ -67,7 +67,7 @@ function GameWorld() {
 
   const { isPlaying } = useGameStore();
   const qualityPreset = useQualityPreset();
-  const { cinematicMode, quality: graphicsQuality } = useCinematicSettings();
+  const { quality: graphicsQuality } = useCinematicSettings();
 
   // 3-point lighting setup
   const keyLight = GRAPHICS.lights.key;

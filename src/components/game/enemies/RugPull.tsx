@@ -85,7 +85,6 @@ export function RugPull({ enemy }: RugPullProps) {
   useEffect(() => {
     if (isActivated && meshRef.current) {
       // Collapse animation
-      const startScale = meshRef.current.scale.clone();
       const targetScale = new THREE.Vector3(1.2, 0.1, 1.2);
       
       const animateCollapse = () => {

@@ -53,13 +53,20 @@ export function Shop({ isOpen, onClose }: ShopProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+    <div 
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shop-title"
+      aria-describedby="shop-description"
+    >
       <div className="bg-gray-900 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-700">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">🛒 Power-Up Shop</h2>
+          <h2 id="shop-title" className="text-2xl font-bold text-white">🛒 Power-Up Shop</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white text-2xl"
+            aria-label="Close shop"
           >
             ×
           </button>
@@ -69,7 +76,7 @@ export function Shop({ isOpen, onClose }: ShopProps) {
           <div className="text-xl font-bold text-orange-400">
             {(rektTokens || 0).toLocaleString()} $REKT
           </div>
-          <div className="text-gray-400 text-sm">Your Balance</div>
+          <div id="shop-description" className="text-gray-400 text-sm">Your Balance</div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
