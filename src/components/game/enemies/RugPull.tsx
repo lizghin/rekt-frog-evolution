@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Enemy } from '@/types/game';
-import { useGameStore } from '@/store/gameStore';
+// import { useGameStore } from '@/store/gameStore'; // TODO: Implement when game logic is ready
 import { ENEMY_CONFIGS } from '@/lib/constants/enemies';
 
 interface RugPullProps {
@@ -85,7 +85,6 @@ export function RugPull({ enemy }: RugPullProps) {
   useEffect(() => {
     if (isActivated && meshRef.current) {
       // Collapse animation
-      const startScale = meshRef.current.scale.clone();
       const targetScale = new THREE.Vector3(1.2, 0.1, 1.2);
       
       const animateCollapse = () => {

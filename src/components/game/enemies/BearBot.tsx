@@ -5,7 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations } from '@react-three/drei';
 import * as THREE from 'three';
 import { Enemy, EnemyType } from '@/types/game';
-import { useGameStore } from '@/store/gameStore';
+// import { useGameStore } from '@/store/gameStore'; // TODO: Implement when game logic is ready
 import { ENEMY_CONFIGS, ENEMY_AI_STATES } from '@/lib/constants/enemies';
 
 interface BearBotProps {

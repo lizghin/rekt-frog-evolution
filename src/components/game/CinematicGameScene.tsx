@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useRef, Fragment } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Suspense, useRef, Fragment, useEffect, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
 import {
   OrbitControls,
   Environment,
@@ -66,9 +66,7 @@ function GameWorld() {
 
   const { 
     isPlaying, 
-    graphicsQuality,
-    focusDistance,
-    focalLength
+    graphicsQuality
   } = useGameStore();
 
   // Get quality-based settings
@@ -239,13 +237,29 @@ interface CinematicGameSceneProps {
 }
 
 export function CinematicGameScene({ className = '' }: CinematicGameSceneProps) {
+  const [isMounted, setIsMounted] = useState(false);
   const { graphicsQuality, focusDistance, focalLength } = useGameStore();
+
+  // Ensure CSR-only mounting to avoid SSR warnings
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Quality-based renderer settings
   const qualityPreset = QUALITY_PRESETS[graphicsQuality];
   const dpr = qualityPreset.dpr;
   const shadows = qualityPreset.shadows;
   const antialias = graphicsQuality === 'high' || graphicsQuality === 'ultra';
+
+  if (!isMounted) {
+    return (
+      <div className={`w-full h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-black ${className}`}>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-white text-lg">Initializing 3D Scene...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`w-full h-full ${className}`}>

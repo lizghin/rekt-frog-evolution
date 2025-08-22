@@ -7,6 +7,7 @@ import { GameHUD } from '@/components/ui/GameHUD';
 import { WalletConnector } from '@/components/ui/WalletConnector';
 import { Shop } from '@/components/ui/Shop';
 import { GraphicsPanel } from '@/components/ui/GraphicsPanel';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { useGameStore } from '@/store/gameStore';
 
 export default function HomePage() {
@@ -89,7 +90,9 @@ export default function HomePage() {
   return (
     <div className="relative w-screen h-screen bg-black overflow-hidden">
       {/* 3D сцена */}
-      <CinematicGameScene className="absolute inset-0" />
+      <ErrorBoundary>
+        <CinematicGameScene className="absolute inset-0" />
+      </ErrorBoundary>
 
       {/* HUD — показываем в игре (и на паузе тоже полезно видеть статы) */}
       {isPlaying && <GameHUD />}

@@ -24,7 +24,7 @@ class AudioManager implements SoundManager {
     }
   }
 
-  private async loadSound(frequency: number, duration: number, _type: OscillatorType = 'sine'): Promise<AudioBuffer> {
+  private async loadSound(frequency: number, duration: number): Promise<AudioBuffer> {
     if (!this.audioContext) throw new Error('Audio context not initialized');
 
     const sampleRate = this.audioContext.sampleRate;
@@ -39,7 +39,7 @@ class AudioManager implements SoundManager {
     return buffer;
   }
 
-  private async playSound(frequency: number, duration: number, type: OscillatorType = 'sine'): Promise<void> {
+  private async playSound(frequency: number, duration: number): Promise<void> {
     if (!this.audioContext || this.audioContext.state === 'suspended') {
       await this.audioContext?.resume();
     }
@@ -47,7 +47,7 @@ class AudioManager implements SoundManager {
     if (!this.audioContext) return;
 
     try {
-      const buffer = await this.loadSound(frequency, duration, type);
+      const buffer = await this.loadSound(frequency, duration);
       const source = this.audioContext.createBufferSource();
       const gainNode = this.audioContext.createGain();
 
@@ -66,22 +66,22 @@ class AudioManager implements SoundManager {
   }
 
   async playCoin(): Promise<void> {
-    await this.playSound(800, 0.1, 'square');
+    await this.playSound(800, 0.1);
   }
 
   async playJump(): Promise<void> {
-    await this.playSound(400, 0.15, 'sine');
+    await this.playSound(400, 0.15);
   }
 
   async playEvolution(): Promise<void> {
     // Ascending tone sequence
-    await this.playSound(400, 0.1, 'sine');
-    setTimeout(() => this.playSound(600, 0.1, 'sine'), 100);
-    setTimeout(() => this.playSound(800, 0.2, 'sine'), 200);
+    await this.playSound(400, 0.1);
+    setTimeout(() => this.playSound(600, 0.1), 100);
+    setTimeout(() => this.playSound(800, 0.2), 200);
   }
 
   async playHit(): Promise<void> {
-    await this.playSound(200, 0.2, 'sawtooth');
+    await this.playSound(200, 0.2);
   }
 }
 
