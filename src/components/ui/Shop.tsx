@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+// import { useState } from 'react'; // TODO: Use when shop state is implemented
 import { useGameStore } from '@/store/gameStore';
 
 interface ShopProps {

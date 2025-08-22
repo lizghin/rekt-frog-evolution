@@ -15,6 +15,7 @@ export function FPSMonitor({ position = [10, 10, 0] }: FPSMonitorProps) {
   const lastTimeRef = useRef(0);
   const fpsHistoryRef = useRef<number[]>([]);
   const lastQualityChangeRef = useRef(0);
+  const qualityChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const { graphicsQuality, setGraphicsQuality } = useGameStore();
   
@@ -34,29 +35,42 @@ export function FPSMonitor({ position = [10, 10, 0] }: FPSMonitorProps) {
         fpsHistoryRef.current.shift();
       }
       
-      // Adaptive quality adjustment
+      // Adaptive quality adjustment with debouncing
       const avgFPS = fpsHistoryRef.current.reduce((a, b) => a + b, 0) / fpsHistoryRef.current.length;
       const timeSinceLastChange = currentTime - lastQualityChangeRef.current;
       
-      // Downgrade if FPS < 50 for 3 seconds
-      if (avgFPS < 50 && timeSinceLastChange > 3) {
-        const qualityLevels = ['ultra', 'high', 'medium', 'low'] as const;
-        const currentIndex = qualityLevels.indexOf(graphicsQuality);
-        if (currentIndex < qualityLevels.length - 1) {
-          setGraphicsQuality(qualityLevels[currentIndex + 1]);
-          lastQualityChangeRef.current = currentTime;
-          console.log(`🔄 Auto-downgraded to ${qualityLevels[currentIndex + 1]} (FPS: ${avgFPS.toFixed(1)})`);
-        }
+      // Clear any pending quality changes to prevent flicker
+      if (qualityChangeTimeoutRef.current) {
+        clearTimeout(qualityChangeTimeoutRef.current);
+        qualityChangeTimeoutRef.current = null;
       }
       
-      // Upgrade if FPS > 58 for 5 seconds
-      if (avgFPS > 58 && timeSinceLastChange > 5) {
-        const qualityLevels = ['low', 'medium', 'high', 'ultra'] as const;
-        const currentIndex = qualityLevels.indexOf(graphicsQuality);
-        if (currentIndex > 0) {
-          setGraphicsQuality(qualityLevels[currentIndex - 1]);
-          lastQualityChangeRef.current = currentTime;
-          console.log(`🔄 Auto-upgraded to ${qualityLevels[currentIndex - 1]} (FPS: ${avgFPS.toFixed(1)})`);
+      // Debounced quality adjustment (minimum 2s interval)
+      if (timeSinceLastChange > 2) {
+        // Downgrade if FPS < 50 for 3 seconds
+        if (avgFPS < 50 && fpsHistoryRef.current.length >= 3) {
+          const qualityLevels = ['ultra', 'high', 'medium', 'low'] as const;
+          const currentIndex = qualityLevels.indexOf(graphicsQuality);
+          if (currentIndex < qualityLevels.length - 1) {
+            qualityChangeTimeoutRef.current = setTimeout(() => {
+              setGraphicsQuality(qualityLevels[currentIndex + 1]);
+              lastQualityChangeRef.current = currentTime;
+              console.log(`🔄 Auto-downgraded to ${qualityLevels[currentIndex + 1]} (FPS: ${avgFPS.toFixed(1)})`);
+            }, 100);
+          }
+        }
+        
+        // Upgrade if FPS > 58 for 5 seconds
+        if (avgFPS > 58 && fpsHistoryRef.current.length >= 5) {
+          const qualityLevels = ['low', 'medium', 'high', 'ultra'] as const;
+          const currentIndex = qualityLevels.indexOf(graphicsQuality);
+          if (currentIndex > 0) {
+            qualityChangeTimeoutRef.current = setTimeout(() => {
+              setGraphicsQuality(qualityLevels[currentIndex - 1]);
+              lastQualityChangeRef.current = currentTime;
+              console.log(`🔄 Auto-upgraded to ${qualityLevels[currentIndex - 1]} (FPS: ${avgFPS.toFixed(1)})`);
+            }, 100);
+          }
         }
       }
     }

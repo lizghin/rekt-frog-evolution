@@ -48,6 +48,10 @@ interface GameState {
   setGraphicsQuality: (quality: 'low' | 'medium' | 'high' | 'ultra') => void;
   setFocusDistance: (distance: number) => void;
   setFocalLength: (length: number) => void;
+  
+  // Cinematic mode
+  cinematicMode: boolean;
+  setCinematicMode: (enabled: boolean) => void;
 }
 
 const initialState: Omit<GameState,
@@ -55,7 +59,7 @@ const initialState: Omit<GameState,
   | 'addScore' | 'addTokens' | 'loseLife'
   | 'pauseGame' | 'resumeGame' | 'togglePause'
   | 'tick'
-  | 'setGraphicsQuality' | 'setFocusDistance' | 'setFocalLength'
+  | 'setGraphicsQuality' | 'setFocusDistance' | 'setFocalLength' | 'setCinematicMode'
 > = {
   isPlaying: false,
   isPaused: false,
@@ -75,6 +79,7 @@ const initialState: Omit<GameState,
   graphicsQuality: 'high' as const,
   focusDistance: 10,
   focalLength: 50,
+  cinematicMode: false,
 };
 
 export const useGameStore = create<GameState>()(
@@ -128,6 +133,7 @@ export const useGameStore = create<GameState>()(
       setGraphicsQuality: (quality) => set({ graphicsQuality: quality }),
       setFocusDistance: (distance) => set({ focusDistance: distance }),
       setFocalLength: (length) => set({ focalLength: length }),
+      setCinematicMode: (enabled) => set({ cinematicMode: enabled }),
     }),
     {
       name: 'rekt-frog-storage',
@@ -150,6 +156,14 @@ export const useCharacter = () => useGameStore(s => s.character);
 export const useGraphicsQuality = () => useGameStore(s => s.graphicsQuality);
 export const useFocusDistance = () => useGameStore(s => s.focusDistance);
 export const useFocalLength = () => useGameStore(s => s.focalLength);
+export const useCinematicMode = () => useGameStore(s => s.cinematicMode);
+
+// Memoized heavy selectors to reduce re-renders
+export const useQualityPreset = () => useGameStore(s => QUALITY_PRESETS[s.graphicsQuality]);
+export const useCinematicSettings = () => useGameStore(s => ({ 
+  cinematicMode: s.cinematicMode,
+  quality: s.graphicsQuality 
+}));
 
 // Quality presets for performance optimization
 export const QUALITY_PRESETS = {
@@ -205,4 +219,5 @@ export const useActions = () => useGameStore(s => ({
   setGraphicsQuality: s.setGraphicsQuality,
   setFocusDistance: s.setFocusDistance,
   setFocalLength: s.setFocalLength,
+  setCinematicMode: s.setCinematicMode,
 }));

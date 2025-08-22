@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useRef, Fragment } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Suspense, useRef, Fragment, useEffect, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
 import {
   OrbitControls,
   Environment,
@@ -25,6 +25,7 @@ import {
   DepthOfField,
   BrightnessContrast,
   HueSaturation,
+  ChromaticAberration,
 } from '@react-three/postprocessing';
 
 // Game Components
@@ -34,7 +35,7 @@ import { GameLoop } from '@/components/game/GameLoop';
 import { FPSMonitor } from '@/components/ui/FPSMonitor';
 
 // Game State
-import { useGameStore, QUALITY_PRESETS } from '@/store/gameStore';
+import { useGameStore, useQualityPreset, useCinematicSettings, useFocusDistance, useFocalLength } from '@/store/gameStore';
 
 // Graphics constants
 import { GRAPHICS } from '@/lib/constants/graphics';
@@ -64,15 +65,9 @@ function GameWorld() {
   const characterRef = useRef<THREE.Group>(null);
   const sunRef = useRef<THREE.Mesh>(null);
 
-  const { 
-    isPlaying, 
-    graphicsQuality,
-    focusDistance,
-    focalLength
-  } = useGameStore();
-
-  // Get quality-based settings
-  const qualityPreset = QUALITY_PRESETS[graphicsQuality];
+  const { isPlaying } = useGameStore();
+  const qualityPreset = useQualityPreset();
+  const { cinematicMode, quality: graphicsQuality } = useCinematicSettings();
 
   // 3-point lighting setup
   const keyLight = GRAPHICS.lights.key;
@@ -239,13 +234,31 @@ interface CinematicGameSceneProps {
 }
 
 export function CinematicGameScene({ className = '' }: CinematicGameSceneProps) {
-  const { graphicsQuality, focusDistance, focalLength } = useGameStore();
+  const [isMounted, setIsMounted] = useState(false);
+  const qualityPreset = useQualityPreset();
+  const { cinematicMode, quality: graphicsQuality } = useCinematicSettings();
+  const focusDistance = useFocusDistance();
+  const focalLength = useFocalLength();
+
+  // Ensure CSR-only mounting to avoid SSR warnings
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Quality-based renderer settings
-  const qualityPreset = QUALITY_PRESETS[graphicsQuality];
   const dpr = qualityPreset.dpr;
   const shadows = qualityPreset.shadows;
   const antialias = graphicsQuality === 'high' || graphicsQuality === 'ultra';
+
+  if (!isMounted) {
+    return (
+      <div className={`w-full h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-black ${className}`}>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-white text-lg">Initializing 3D Scene...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`w-full h-full ${className}`}>
@@ -272,7 +285,7 @@ export function CinematicGameScene({ className = '' }: CinematicGameSceneProps) 
           {/* Enhanced Postprocessing Pipeline */}
           <EffectComposer>
             <Bloom
-              intensity={qualityPreset.bloomIntensity}
+              intensity={cinematicMode ? qualityPreset.bloomIntensity * 1.3 : qualityPreset.bloomIntensity}
               luminanceThreshold={0.85}
               luminanceSmoothing={0.2}
             />
@@ -283,10 +296,17 @@ export function CinematicGameScene({ className = '' }: CinematicGameSceneProps) 
             />
             <Noise
               premultiply={true}
-              opacity={0.02}
+              opacity={cinematicMode ? 0.04 : 0.02}
             />
-            <BrightnessContrast brightness={0.05} contrast={0.1} />
-            <HueSaturation hue={0} saturation={0.1} />
+            {cinematicMode && (graphicsQuality === 'high' || graphicsQuality === 'ultra') ? (
+              <ChromaticAberration
+                offset={new THREE.Vector2(0.001, 0.001)}
+              />
+            ) : (
+              <Fragment />
+            )}
+            <BrightnessContrast brightness={0.05} contrast={cinematicMode ? 0.15 : 0.1} />
+            <HueSaturation hue={0} saturation={cinematicMode ? 0.15 : 0.1} />
             {qualityPreset.smaa ? <SMAA /> : <Fragment />}
             {qualityPreset.dof ? (
               <DepthOfField

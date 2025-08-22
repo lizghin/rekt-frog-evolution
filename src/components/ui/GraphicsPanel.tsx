@@ -13,9 +13,11 @@ export function GraphicsPanel({ isOpen, onToggle }: GraphicsPanelProps) {
     graphicsQuality,
     focusDistance,
     focalLength,
+    cinematicMode,
     setGraphicsQuality,
     setFocusDistance,
     setFocalLength,
+    setCinematicMode,
   } = useGameStore();
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -24,6 +26,7 @@ export function GraphicsPanel({ isOpen, onToggle }: GraphicsPanelProps) {
     setGraphicsQuality('high');
     setFocusDistance(10);
     setFocalLength(50);
+    setCinematicMode(false);
   };
 
   if (!isOpen) return null;
@@ -64,6 +67,24 @@ export function GraphicsPanel({ isOpen, onToggle }: GraphicsPanelProps) {
             <option value="ultra">Ultra</option>
           </select>
         </div>
+
+        {/* Cinematic Mode Toggle */}
+        {(graphicsQuality === 'high' || graphicsQuality === 'ultra') && (
+          <div className="mb-3">
+            <label className="flex items-center text-gray-300 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cinematicMode}
+                onChange={(e) => setCinematicMode(e.target.checked)}
+                className="mr-2 accent-purple-500"
+              />
+              🎬 Cinematic Mode
+            </label>
+            <p className="text-gray-500 text-xs mt-1">
+              Enhanced bloom + film grain
+            </p>
+          </div>
+        )}
 
         {/* Expanded Controls */}
         {isExpanded && (

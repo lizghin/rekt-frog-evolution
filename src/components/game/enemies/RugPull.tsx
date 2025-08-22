@@ -4,7 +4,7 @@ import { useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Enemy } from '@/types/game';
-import { useGameStore } from '@/store/gameStore';
+// import { useGameStore } from '@/store/gameStore'; // TODO: Implement when game logic is ready
 import { ENEMY_CONFIGS } from '@/lib/constants/enemies';
 
 interface RugPullProps {
